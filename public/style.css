@@ -1,0 +1,16 @@
+body {
+  background: #111;
+  color: #eee;
+  font-family: sans-serif;
+}
+
+li {
+  list-style: none;
+  font-size: 22px;
+  padding: 10px;
+}
+
+input[type="checkbox"] {
+  transform: scale(2.5);
+  margin-right: 10px;
+}
