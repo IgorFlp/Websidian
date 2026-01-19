@@ -1,0 +1,13 @@
+version: "3.8"
+
+services:
+  websidian:
+    build: .
+    container_name: websidian
+    ports:
+      - "${PORT}:3000"
+    volumes:
+      - "${VAULT_HOST_PATH}:/vault:ro"
+    env_file:
+      - .env
+    restart: unless-stopped

@@ -1,0 +1,16 @@
+version: "3.8"
+
+services:
+  websidian:
+    image: igorflp/websidian:latest
+    container_name: websidian
+    ports:
+      - "3000:3000"
+    volumes:
+      - /path/to/obsidian/vault:/vault:ro
+    environment:
+      APP_USER: ##admin
+      APP_PASSWORD: ##change-me
+      SESSION_SECRET: ##change-this
+      VAULT_PATH: ##/vault
+    restart: unless-stopped

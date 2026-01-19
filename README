@@ -1,0 +1,21 @@
+## 🚀 Docker install
+
+```bash
+git clone https://github.com/seu-user/websidian
+cd websidian
+cp .env.example .env
+# edite o .env
+docker compose up -d
+```
+
+## 🐳 Install via Portainer
+
+1. Create a new stack
+2. Paste the content of `docker-compose.portainer.yml`
+3. Change:
+   - Environment variables
+   - Vault's path
+   - Port
+4. Deploy Stack
+
+⚠️ `docker-compose.portainer.yml` is only an example file.
