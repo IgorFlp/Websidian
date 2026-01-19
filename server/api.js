@@ -12,17 +12,22 @@ const app = express();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const IGNORED_DIRS = [".obsidian", ".trash", ".git", "node_modules"];
-
-// ✅ vault (por enquanto local)
-const VAULT = process.env.VAULT_PATH; //path.join(__dirname, "../vault");
-// ✅ public (frontend)
+const VAULT = process.env.VAULT_PATH;
 const PUBLIC = path.join(__dirname, "../public");
+
+app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static(path.join(process.cwd(), "public")));
-app.use("/download", express.static(path.join(VAULT, "Downloads")));
-app.get("/files", (req, res) => {
-  res.sendFile(path.join(process.cwd(), "public/files.html"));
-});
+// Midleware de auth e session
+function authPage(req, res, next) {
+  if (req.session?.auth) return next();
+  return res.redirect("/login");
+}
+
+function authApi(req, res, next) {
+  if (req.session && req.session.auth) return next();
+  res.status(401).json({ error: "unauthorized" });
+}
 
 app.use(
   session({
@@ -31,6 +36,19 @@ app.use(
     saveUninitialized: false,
   }),
 );
+
+//app.use(express.static(path.join(process.cwd(), "public"), requireAuth));
+app.get("/", authPage, (req, res) => {
+  res.sendFile(path.join(process.cwd(), "public/index.html"));
+});
+app.use("/download", authPage, express.static(path.join(VAULT, "Downloads")));
+app.get("/files", authPage, (req, res) => {
+  res.sendFile(path.join(process.cwd(), "public/files.html"));
+});
+app.get("/login", (req, res) => {
+  if (req.session.auth) return res.redirect("/");
+  res.sendFile(path.join(process.cwd(), "public/login.html"));
+});
 
 function parseTask(line) {
   if (!line || typeof line !== "string") return null;
@@ -64,16 +82,22 @@ function parseTask(line) {
 
 app.post("/login", (req, res) => {
   const { user, pass } = req.body;
-
-  if (user === process.env.APP_USER && pass === process.env.APP_PASS) {
+  if (user === process.env.APP_USER && pass === process.env.APP_PASSWORD) {
+    console.log("Login feito com sucesso");
     req.session.auth = true;
     return res.redirect("/");
   }
-
   res.redirect("/login?error=1");
 });
 
-app.get("/api/files", (req, res) => {
+app.get("/logout", (req, res) => {
+  req.session.destroy(() => {
+    res.clearCookie("connect.sid");
+    res.redirect("/login");
+  });
+});
+
+app.get("/api/files", authApi, (req, res) => {
   function scan(dir) {
     fs.readdirSync(dir).forEach((file) => {
       const full = path.join(dir, file);
@@ -87,7 +111,7 @@ app.get("/api/files", (req, res) => {
   files = files.filter((file) => !file.startsWith("."));
   res.json({ files });
 });
-app.get("/api/tasks", (req, res) => {
+app.get("/api/tasks", authApi, (req, res) => {
   const tasks = [];
 
   function scan(dir) {
@@ -140,7 +164,7 @@ app.get("/api/tasks", (req, res) => {
   res.json(tasks);
 });
 
-app.post("/api/tasks/toggle", (req, res) => {
+app.post("/api/tasks/toggle", authApi, (req, res) => {
   const { file, line } = req.body;
   const content = fs.readFileSync(file, "utf8").split("\n");
   content[line] = content[line].includes("[x]")
@@ -151,7 +175,7 @@ app.post("/api/tasks/toggle", (req, res) => {
   res.json({ ok: true });
 });
 
-app.get("/download", (req, res) => {
+app.get("/download", authApi, (req, res) => {
   const relPath = req.params[0];
   const safePath = path.normalize(relPath).replace(/^(\.\.(\/|\\|$))+/, "");
 

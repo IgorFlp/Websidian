@@ -3,7 +3,64 @@ body {
   color: #eee;
   font-family: sans-serif;
 }
+/* LOGIN PAGE */
+.login-body {
+  background: #1e1e1e;
+  font-family: Arial, sans-serif;
+}
 
+.login-card {
+  width: 280px;
+  margin: 25px auto;
+  padding: 24px;
+
+  background: linear-gradient(180deg, #4b0082, #2a003f);
+  border-radius: 16px;
+
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.6);
+  color: #fff;
+}
+.login-card h1 {
+  text-align: center;
+  margin-bottom: 24px;
+  color: #c084ff;
+}
+.login-card label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.login-card input {
+  width: 90%;
+  height: 38px;
+  margin-bottom: 16px;
+  padding: 6px 10px;
+
+  border-radius: 6px;
+  border: 1px solid #aaa;
+
+  font-size: 14px;
+}
+
+.login-card button {
+  width: 100%;
+  height: 40px;
+
+  background: #7c3aed;
+  color: #fff;
+
+  border: none;
+  border-radius: 8px;
+
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.login-card button:active {
+  background: #5b21b6;
+}
 /* TASK PAGE */
 .tasks-section {
   background: #4b0d73;
@@ -84,6 +141,7 @@ body {
   margin-top: -16px;
   color: #fff;
 }
+
 /* FILE PAGE */
 .file-list {
   margin-top: 20px;

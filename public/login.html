@@ -1,5 +1,24 @@
-<form method="POST" action="/login">
-  <input name="user" placeholder="Usuário" />
-  <input name="pass" type="password" placeholder="Senha" />
-  <button type="submit">Entrar</button>
-</form>
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Login</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+
+  <body class="login-body">
+    <div class="login-card">
+      <h1>Websidian</h1>
+
+      <form method="POST" action="/login">
+        <label>Usuário</label>
+        <input type="text" name="user" required />
+
+        <label>Senha</label>
+        <input type="password" name="pass" required />
+
+        <button type="submit">Entrar</button>
+      </form>
+    </div>
+  </body>
+</html>
