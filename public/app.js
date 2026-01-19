@@ -85,8 +85,22 @@ function renderTasks(tasks, filterFn, ulId) {
   var ul = document.getElementById(ulId);
   ul.innerHTML = "";
   //console.log("Tentando renderizar", tasks, filterFn, ulId);
-  tasks.filter(filterFn).forEach(function (task) {
-    var li = document.createElement("li");
+  var tasksFiltered = tasks.filter(filterFn);
+  tasksFiltered.forEach(function (task) {
+    /*
+    <li class="task-item">
+      <label class="task-card">
+        <input type="checkbox">
+        <span class="task-text">
+          Estudar como criar um postgres portátil 📅 2026-01-19
+        </span>
+      </label>
+    */
+    var taskItem = document.createElement("li");
+    taskItem.className = "task-item";
+
+    var taskCard = document.createElement("label");
+    taskCard.className = "task-card";
 
     var checkbox = document.createElement("input");
     checkbox.type = "checkbox";
@@ -97,13 +111,20 @@ function renderTasks(tasks, filterFn, ulId) {
       toggleTask(task);
     };
 
-    var label = document.createElement("span");
-    label.appendChild(document.createTextNode(" " + task.text));
+    var fakebox = document.createElement("span");
+    fakebox.className = "obsidian-checkbox";
+    fakebox.for = checkbox;
 
-    li.appendChild(checkbox);
-    li.appendChild(label);
+    var taskText = document.createElement("span");
+    taskText.appendChild(document.createTextNode(" " + task.text));
 
-    ul.appendChild(li);
+    taskCard.appendChild(checkbox);
+    taskCard.appendChild(fakebox);
+    taskCard.appendChild(taskText);
+
+    taskItem.appendChild(taskCard);
+
+    ul.appendChild(taskItem);
   });
 }
 
