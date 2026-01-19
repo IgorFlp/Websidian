@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import dotenv from "dotenv";
 import { fileURLToPath } from "url";
+import session from "express-session";
 
 dotenv.config();
 
@@ -10,15 +11,26 @@ const app = express();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const IGNORED_DIRS = [".obsidian", ".trash", ".git", "node_modules"];
 
 // ✅ vault (por enquanto local)
 const VAULT = process.env.VAULT_PATH; //path.join(__dirname, "../vault");
-console.log("Usando vault em:", VAULT);
 // ✅ public (frontend)
 const PUBLIC = path.join(__dirname, "../public");
-
-app.use(express.static(path.join(process.cwd(), "public")));
 app.use(express.json());
+app.use(express.static(path.join(process.cwd(), "public")));
+app.use("/download", express.static(path.join(VAULT, "Downloads")));
+app.get("/files", (req, res) => {
+  res.sendFile(path.join(process.cwd(), "public/files.html"));
+});
+
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+  }),
+);
 
 function parseTask(line) {
   if (!line || typeof line !== "string") return null;
@@ -50,12 +62,44 @@ function parseTask(line) {
   return task;
 }
 
+app.post("/login", (req, res) => {
+  const { user, pass } = req.body;
+
+  if (user === process.env.APP_USER && pass === process.env.APP_PASS) {
+    req.session.auth = true;
+    return res.redirect("/");
+  }
+
+  res.redirect("/login?error=1");
+});
+
+app.get("/api/files", (req, res) => {
+  function scan(dir) {
+    fs.readdirSync(dir).forEach((file) => {
+      const full = path.join(dir, file);
+
+      if (fs.statSync(full).isDirectory()) {
+        return scan(full);
+      }
+    });
+  }
+  let files = fs.readdirSync(VAULT, { recursive: true });
+  files = files.filter((file) => !file.startsWith("."));
+  res.json({ files });
+});
 app.get("/api/tasks", (req, res) => {
   const tasks = [];
 
   function scan(dir) {
     fs.readdirSync(dir).forEach((file) => {
       const full = path.join(dir, file);
+
+      if (
+        fs.statSync(full).isDirectory() &&
+        (file.startsWith(".") || IGNORED_DIRS.includes(file))
+      ) {
+        return;
+      }
 
       if (fs.statSync(full).isDirectory()) {
         return scan(full);
@@ -105,6 +149,23 @@ app.post("/api/tasks/toggle", (req, res) => {
 
   fs.writeFileSync(file, content.join("\n"));
   res.json({ ok: true });
+});
+
+app.get("/download", (req, res) => {
+  const relPath = req.params[0];
+  const safePath = path.normalize(relPath).replace(/^(\.\.(\/|\\|$))+/, "");
+
+  const fullPath = path.join(VAULT, safePath);
+
+  if (!fullPath.startsWith(VAULT)) {
+    return res.status(403).send("Forbidden");
+  }
+
+  if (!fs.existsSync(fullPath)) {
+    return res.status(404).send("File not found");
+  }
+
+  res.download(fullPath);
 });
 
 app.listen(3000, () => console.log("Dashboard rodando na porta 3000"));
