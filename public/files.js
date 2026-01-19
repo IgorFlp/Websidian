@@ -4,12 +4,26 @@ window.onerror = function (msg, url, line) {
 
 function httpGet(url, callback) {
   var xhr = new XMLHttpRequest();
+  xhr.open("GET", url, true);
+
   xhr.onreadystatechange = function () {
-    if (xhr.readyState === 4 && xhr.status === 200) {
-      callback(JSON.parse(xhr.responseText));
+    if (xhr.readyState !== 4) return;
+
+    if (xhr.status === 401) {
+      window.location.href = "/login";
+      return;
+    }
+
+    if (xhr.status === 200) {
+      try {
+        var data = JSON.parse(xhr.responseText);
+        callback(data);
+      } catch (e) {
+        alert("Erro ao processar dados");
+      }
     }
   };
-  xhr.open("GET", url, true);
+
   xhr.send();
 }
 function CreateFileListItem(file) {

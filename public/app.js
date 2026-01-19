@@ -1,7 +1,7 @@
 window.onerror = function (msg, url, line) {
   alert("JS ERROR:\n" + msg + "\nline: " + line);
 };
-
+/*
 function httpGet(url, callback) {
   var xhr = new XMLHttpRequest();
   xhr.onreadystatechange = function () {
@@ -10,6 +10,30 @@ function httpGet(url, callback) {
     }
   };
   xhr.open("GET", url, true);
+  xhr.send();
+}*/
+function httpGet(url, callback) {
+  var xhr = new XMLHttpRequest();
+  xhr.open("GET", url, true);
+
+  xhr.onreadystatechange = function () {
+    if (xhr.readyState !== 4) return;
+
+    if (xhr.status === 401) {
+      window.location.href = "/login";
+      return;
+    }
+
+    if (xhr.status === 200) {
+      try {
+        var data = JSON.parse(xhr.responseText);
+        callback(data);
+      } catch (e) {
+        alert("Erro ao processar dados");
+      }
+    }
+  };
+
   xhr.send();
 }
 function toDate(date) {
