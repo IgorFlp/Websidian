@@ -53,8 +53,11 @@ window.onload = function () {
     files = files.files;
     files.forEach(function (file) {
       var li = document.createElement("li");
-      var pasta = file.split("\\")[0];
-      var nome = file.split("\\")[1];
+      var normalized = file.replace(/\\/g, "/"); // converte \ em /
+      var parts = normalized.split("/");
+
+      var pasta = parts.length > 1 ? parts[0] : null;
+      var nome = parts.length > 1 ? parts.slice(1).join("/") : parts[0];
       if (nome !== undefined) {
         var htmlPasta = document.getElementById(pasta);
         if (htmlPasta) {

@@ -178,18 +178,26 @@ app.post("/api/tasks/toggle", authApi, (req, res) => {
 app.get("/download", authApi, (req, res) => {
   const relPath = req.params[0];
   const safePath = path.normalize(relPath).replace(/^(\.\.(\/|\\|$))+/, "");
-
   const fullPath = path.join(VAULT, safePath);
 
-  if (!fullPath.startsWith(VAULT)) {
-    return res.status(403).send("Forbidden");
-  }
-
-  if (!fs.existsSync(fullPath)) {
+  if (!fullPath.startsWith(VAULT) || !fs.existsSync(fullPath)) {
     return res.status(404).send("File not found");
   }
 
-  res.download(fullPath);
+  res.setHeader("Content-Type", "application/octet-stream");
+
+  const fileName = path.basename(fullPath);
+
+  res.download(fullPath, fileName, (err) => {
+    if (err) {
+      console.error("Erro no download:", err);
+      if (!res.headersSent) {
+        res.status(500).send("Erro ao processar download");
+      }
+    }
+  });
 });
 
-app.listen(3000, () => console.log("Dashboard rodando na porta 3000"));
+app.listen(3000, "0.0.0.0", () =>
+  console.log("Dashboard rodando na porta 3000"),
+);
