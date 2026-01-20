@@ -1,16 +1,57 @@
-version: "3.8"
+version: "3.7"
 
 services:
   websidian:
-    image: igorflp/websidian:latest
-    container_name: websidian
-    ports:
-      - "3000:3000"
-    volumes:
-      - /path/to/obsidian/vault:/vault:ro
+    image: ghcr.io/igorflp/websidian:latest
+    #If you need to expose HTTP port for older devices that can't hangle TLS 1.2
+    # uncoment below and change de XXXX for the port you want
+    #Ports:
+    #  - "XXXX:3000"
+    networks:
+      - network_public
+
     environment:
-      APP_USER: ##admin
-      APP_PASSWORD: ##change-me
-      SESSION_SECRET: ##change-this
-      VAULT_PATH: ##/vault
-    restart: unless-stopped
+      NODE_ENV: production
+      PORT: 3000
+
+      # 🔐 Simples Auth
+      APP_USER: #YourUsernameHere#
+      APP_PASSWORD: #YourPasswordHere#
+
+      # 📂 Vault bind container path
+      VAULT_PATH: /app/vault #Change if you change the container path
+
+      # 🍪 Session
+      SESSION_SECRET: #Login session secret#
+      COOKIE_DOMAIN: #Your domain here#
+
+    volumes:
+      # Strongly recomended for data safety reasons that your vault is outside of the container
+      # in the host machine.
+      # Your Obsidian vault path ON YOUR SERVER : Path INSIDE the container
+      - /srv/obsidian/ObsidianVault:/app/vault
+
+    deploy:
+      mode: replicated
+      replicas: 1
+
+      placement:
+        constraints:
+          - node.role == manager
+
+      labels:
+        - traefik.enable=1
+        # HTTPS router
+        - traefik.http.routers.websidian.rule=Host(`#Your domain here#`) #Your domain here#
+        - traefik.http.routers.websidian.entrypoints=websecure
+        - traefik.http.routers.websidian.tls.certresolver=letsencryptresolver
+
+        # HTTP router
+        - traefik.http.routers.websidian-http.rule=Host(`##Your domain here#`) #Your domain here#
+        - traefik.http.routers.websidian-http.entrypoints=web
+
+        - traefik.http.services.websidian.loadbalancer.server.port=3000
+
+networks:
+  network_public:
+    external: true

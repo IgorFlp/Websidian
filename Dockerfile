@@ -2,11 +2,15 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm install --production
+# Copia apenas o server primeiro (cache eficiente)
+COPY server/package*.json ./server/
 
+# Instala dependências do backend
+RUN cd server && npm install --production
+
+# Copia o resto do projeto
 COPY . .
 
 EXPOSE 3000
 
-CMD ["node", "server/app.js"]
+CMD ["node", "server/api.js"]
