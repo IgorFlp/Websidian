@@ -163,7 +163,19 @@ app.get("/api/tasks", authApi, (req, res) => {
   scan(VAULT);
   res.json(tasks);
 });
+app.get("/api/file-content", authApi, (req, res) => {
+  const relPath = req.query.path;
+  const safePath = path.normalize(relPath).replace(/^(\.\.(\/|\\|$))+/, "");
+  const fullPath = path.join(VAULT, safePath);
 
+  if (!fs.existsSync(fullPath)) {
+    return res.status(404).json({ error: "File not found" });
+  }
+  const content = fs.readFileSync(fullPath, "utf8");
+  console.log("content:", content);
+
+  res.json({ content });
+});
 app.post("/api/tasks/toggle", authApi, (req, res) => {
   const { file, line } = req.body;
   const content = fs.readFileSync(file, "utf8").split("\n");
