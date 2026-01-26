@@ -1,3 +1,48 @@
+# Websidian
+
+## What is websidian?
+
+Websidian is a self hosted web app for your obsidian vault.
+
+Websidian keeps true to obsidian's core principle, YOUR FILES ARE YOURS, but now you have one more option for how you choose to see them.
+
+## Why i created Websidian?
+
+My goal was to revive a very old device (Android 4 tablet) as a "Task portrait" for my working desk Android 4 hindered my progress not being compatible with obsidian or any other solution i came up, at last i though "This can run a browser, so a web app it is"
+
+Every decision on this project is based on the limitations of Android 4, from static web page without frameworks and libraries, base CSS without Tailwind or Bootstrap, manual Date processing, file list for downloads, HTTP option for downloads (Because Android 4 doesn't like TLS 1.2)
+
+## Features
+
+- Task view organized by: Today, This Week, Undefined.
+- Files page: Lists and allow download of a file.
+- Markdown editor (Future)
+- Custom sessions on task view (Future)
+
+## Archtecure Sugestions
+
+### Localhost
+
+If all you need is a task portrait in your home desk you simply:
+-Clone the repository on the PC where the vault is.
+-Create a .env based on .env-example.
+-Run node server/api.js.
+-Access your web view with localhost:3000 OR PC-IP:3000 on other devices.
+
+### Private server (AWS, Azure, Oracle...)
+
+If you are like me and need your vault on every single device on the go, this is the archtecture i recommend.
+
+Task Portrait <- Websidian - Server - Syncthing -> Devices (Phone, PC, Laptop)
+
+Basicaly you need a **copy of your vault** on your server and **Syncthing** installed on the server and in **every device** that you run obsidian.
+
+Syncthing is responsable for updating the vault on every device connected as you edit in one.
+
+I strongly sugest you also backup your vault in a cloud or other private server (Having Google drive or OneDrive tracking your PC vault might be enough)
+
+Then just install Websidian on your server (Via git clone, Docker or Portainer) and access on your limited device that can't run obsidian or syncthing.
+
 ## 🚀 Docker install
 
 ```bash
