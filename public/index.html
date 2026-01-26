@@ -6,6 +6,8 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
+    <!-- Include header -->
+    <div class="header-placeholder"></div>
     <section id="section-hoje"class="tasks-section">
       <h2>Hoje</h2>
       <ul id="tasks-hoje" class="tasks-list">    
@@ -24,6 +26,14 @@
       <ul id="tasks-indefinido" class="tasks-list"></ul>
       <div class="task-count">2 tasks</div>
     </section>
+    <script>
+      // Load header.html into the header-placeholder div
+      fetch('header.html')
+        .then(response => response.text())
+        .then(data => {
+          document.querySelector('.header-placeholder').innerHTML = data;
+        });
+    </script>
     <script src="app.js"></script>
   </body>
 </html>
