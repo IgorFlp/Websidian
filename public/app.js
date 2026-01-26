@@ -26,6 +26,10 @@ function httpGet(url, callback) {
 
     if (xhr.status === 200) {
       try {
+        if (url.indexOf(".html") !== -1) {
+          callback(xhr.responseText);
+          return;
+        }
         var data = JSON.parse(xhr.responseText);
         callback(data);
       } catch (e) {
@@ -170,5 +174,10 @@ function toggleTask(task) {
   };
 }
 
+window.onload = function () {
+  httpGet("header.html", function (data) {
+    document.querySelector(".header-placeholder").innerHTML = data;
+  });
+};
 loadTasks();
 setInterval(loadTasks, 30000);

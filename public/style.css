@@ -68,11 +68,13 @@ body {
   background-color: #2a003f;
   padding: 10px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-  a {
-    color: #e6d9ff;
-    text-decoration: none;
-    font-size: 18px;
-  }
+}
+.header-container label {
+  color: #e6d9ff;
+  text-decoration: none;
+
+  font-size: 18px;
+  margin-left: 5px;
 }
 .header-item {
   display: flex;
@@ -80,9 +82,6 @@ body {
   margin-right: 30px;
   padding: 10px;
   border-radius: 8px;
-  label {
-    margin-left: 3px;
-  }
 }
 .header-item:hover {
   background-color: rgba(0, 0, 0, 0.432);
@@ -94,19 +93,13 @@ body {
   background-repeat: no-repeat;
   background-size: 20px 20px;
   background-position: center;
-  filter: invert(1);
 
   display: inline-block;
 }
-.files-icon {
+.header-icons {
   width: 26px;
   height: 26px;
-  background-image: url("/assets/files-icon.png");
-  background-repeat: no-repeat;
-  background-size: 26px 26px;
-  background-position: center;
-  filter: invert(1);
-
+  fill: #ffffff;
   display: inline-block;
 }
 /* TASK PAGE */
@@ -226,28 +219,12 @@ body {
   cursor: pointer;
 }
 .btn:hover {
-  background-color: rgb(8, 211, 1);
+  background-color: rgb(179, 2, 196);
   color: #eee;
 }
-.download-icon {
-  width: 24px;
-  height: 24px;
-  background-image: url("/assets/download-icon.png");
-  background-repeat: no-repeat;
-  background-size: 20px 20px;
-  background-position: center;
-  filter: invert(1);
-
-  display: inline-block;
-}
-.edit-icon {
-  width: 24px;
-  height: 24px;
-  background-image: url("/assets/edit-icon.png");
-  background-repeat: no-repeat;
-  background-size: 20px 20px;
-  background-position: center;
-  filter: invert(1);
-
+.icon {
+  font-size: 18px;
+  line-height: 1;
+  fill: #eee;
   display: inline-block;
 }

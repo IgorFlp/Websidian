@@ -8,14 +8,6 @@
   <body>
     <div class="header-placeholder"></div>
     <div class="file-list"></div>
-    <script>
-      // Load header.html into the header-placeholder div
-      fetch("header.html")
-        .then((response) => response.text())
-        .then((data) => {
-          document.querySelector(".header-placeholder").innerHTML = data;
-        });
-    </script>
     <script src="files.js"></script>
   </body>
 </html>
