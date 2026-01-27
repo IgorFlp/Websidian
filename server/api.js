@@ -36,6 +36,38 @@ app.use(
     saveUninitialized: false,
   }),
 );
+function CreateTask(content, task, line) {
+  var newLine = "";
+ 
+  if(task.recurringRule == false){
+        newLine = `- [ ] ${task.displayText} ${task.tags} ${task.recurring? `🔁 ${task.recurringRule}` : ""} ${task.due? `📅 ${task.due}` : ""} ${task.scheduled? `⏳ ${task.scheduled}` : ""}`.trim();
+  }else{
+    if(task.recurringRule.includes("every day")){
+      let nextDate = new Date(task.due || task.scheduled);
+      nextDate.setDate(nextDate.getDate() + 1);      
+      task.scheduled = nextDate.toISOString().split("T")[0];
+      
+      newLine = `- [ ] ${task.displayText } ${task.tags} 🔁 ${task.recurringRule} ${task.scheduled? `⏳ ${task.scheduled}` : ""}`.trim();
+  }
+  if(task.recurringRule.includes("every week")){
+      let nextDate = new Date(task.due || task.scheduled);
+      nextDate.setDate(nextDate.getDate() + 7);      
+      task.scheduled = nextDate.toISOString().split("T")[0];      
+      newLine = `- [ ] ${task.displayText } ${task.tags} 🔁 ${task.recurringRule} ${task.scheduled? `⏳ ${task.scheduled}` : ""}`.trim();
+  } 
+  if(task.recurringRule.includes("days")){
+      let nextDate = new Date(task.due || task.scheduled);
+      var daysMatch = task.recurringRule.match(/every (\d+) days/);
+      var daysInterval = daysMatch ? parseInt(daysMatch[1], 10) : 1;
+      nextDate.setDate(nextDate.getDate() + daysInterval);      
+      task.scheduled = nextDate.toISOString().split("T")[0];
+      
+      newLine = `- [ ] ${task.displayText } ${task.tags} 🔁 ${task.recurringRule} ${task.scheduled? `⏳ ${task.scheduled}` : ""}`.trim();
+  } 
+ }
+  
+  content[line - 1]= newLine;
+  }
 
 //app.use(express.static(path.join(process.cwd(), "public"), requireAuth));
 app.get("/", authPage, (req, res) => {
@@ -50,40 +82,60 @@ app.get("/login", (req, res) => {
   res.sendFile(path.join(process.cwd(), "public/login.html"));
 });
 
+
 function parseTask(line) {
   if (!line || typeof line !== "string") return null;
 
-  const task = {};
+  var task = {};
 
-  task.done = line.includes("[x]");
-  task.text = line.replace(/- \[[ x]\]\s*/, "");
+  task.done = line.indexOf("[x]") !== -1;
 
-  // 📅 due date
-  const dueMatch = task.text.match(/📅\s*(\d{4}-\d{2}-\d{2})/);
+  // remove "- [ ] " ou "- [x] "
+  var rawText = line.replace(/- \[[ x]\]\s*/, "");
+  task.text = rawText;
+
+  // ---------- TAGS ----------
+  var tagMatches = rawText.match(/#([a-zA-Z0-9_-]+)/g);
+  task.tags = tagMatches
+    ? tagMatches.map(function (t) { return `#${t.substring(1)}` })
+    : [];
+
+  // ---------- METADADOS (USAR rawText!) ----------
+
+  // 📅 due
+  var dueMatch = rawText.match(/📅\s*(\d{4}-\d{2}-\d{2})/);
   task.due = dueMatch ? dueMatch[1] : null;
 
   // ⏳ scheduled
-  const schedMatch = task.text.match(/⏳\s*(\d{4}-\d{2}-\d{2})/);
+  var schedMatch = rawText.match(/⏳\s*(\d{4}-\d{2}-\d{2})/);
   task.scheduled = schedMatch ? schedMatch[1] : null;
 
   // ✅ done date
-  const doneMatch = task.text.match(/✅\s*(\d{4}-\d{2}-\d{2})/);
+  var doneMatch = rawText.match(/✅\s*(\d{4}-\d{2}-\d{2})/);
   task.doneDate = doneMatch ? doneMatch[1] : null;
 
   // 🔁 recurring
-  task.recurring = task.text.includes("🔁");
+  task.recurring = rawText.indexOf("🔁") !== -1;
 
-  // #tags
-  const tagMatches = task.text.match(/#(\w+)/g);
-  task.tags = tagMatches ? tagMatches.map((t) => t.replace("#", "")) : [];
+  task.recurringRule = null;
+  if (task.recurring) {
+    var recurMatch = rawText.match(/🔁\s*(.*?)(?:\s*📅|\s*⏳|\s*✅|$)/);
+    task.recurringRule = recurMatch ? recurMatch[1].trim() : null;
+  }  
+  // ---------- TEXTO HUMANO ----------
+  var displayText = rawText
+    .replace(/#[a-zA-Z0-9_-]+/g, "")
+    .replace(/🔁.*|📅.*|⏳.*|✅.*/g, "")
+    .trim();
 
+  task.displayText = displayText;
   return task;
 }
 
-app.post("/login", (req, res) => {
+app.post("/login", (req, res) => { 
   const { user, pass } = req.body;
   if (user === process.env.APP_USER && pass === process.env.APP_PASSWORD) {
-    console.log("Login feito com sucesso");
+    
     req.session.auth = true;
     return res.redirect("/");
   }
@@ -108,7 +160,7 @@ app.get("/api/files", authApi, (req, res) => {
     });
   }
   let files = fs.readdirSync(VAULT, { recursive: true });
-  files = files.filter((file) => !file.startsWith("."));
+  files = files.filter((file) => !file.startsWith(".") && !fs.statSync(path.join(VAULT, file)).isDirectory());
   res.json({ files });
 });
 app.get("/api/tasks", authApi, (req, res) => {
@@ -151,11 +203,13 @@ app.get("/api/tasks", authApi, (req, res) => {
           // metadata
           tags: parsed.tags || [],
           recurring: parsed.recurring || false,
+          recurringRule: parsed.recurringRule || null,
 
           // info do arquivo
           file: full,
           line: index,
         });
+        // console.log(tasks);
       });
     });
   }
@@ -172,7 +226,7 @@ app.get("/api/file-content", authApi, (req, res) => {
     return res.status(404).json({ error: "File not found" });
   }
   const content = fs.readFileSync(fullPath, "utf8");
-  console.log("content:", content);
+
 
   res.json({ content });
 });
@@ -181,8 +235,14 @@ app.post("/api/tasks/toggle", authApi, (req, res) => {
   const content = fs.readFileSync(file, "utf8").split("\n");
   content[line] = content[line].includes("[x]")
     ? content[line].replace("[x]", "[ ]")
-    : content[line].replace("[ ]", "[x]");
+    : content[line].replace("[ ]", "[x]") + ` ✅ ${new Date().toISOString().split("T")[0]}`;
+    
+  if (content[line].includes("🔁")) {
+    const task = parseTask(content[line]);
 
+    CreateTask(content, task, line);
+
+  }
   fs.writeFileSync(file, content.join("\n"));
   res.json({ ok: true });
 });
