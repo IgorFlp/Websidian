@@ -1,0 +1,24 @@
+name: Build & Deploy Websidian
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login GHCR
+        run: echo "${{ secrets.GHRC_SECRET }}" | docker login ghcr.io -u igorflp --password-stdin
+
+      - name: Build Docker image
+        run: |
+          docker build -t ghcr.io/igorflp/websidian:latest .
+
+      - name: Push image
+        run: |
+          docker push ghcr.io/igorflp/websidian:latest
