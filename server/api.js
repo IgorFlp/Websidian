@@ -274,18 +274,17 @@ app.post("/api/newNote", authApi, (req, res) => {
   const { noteName, timestamp, text } = req.body;  
   const safeNoteName = noteName.replace(/[^a-zA-Z0-9-_ ]/g, "");
   const fullPath = path.join(VAULT,'Dailynotes', `${safeNoteName}.md`);
-
+  
   if (fs.existsSync(fullPath)) {
     let content = fs.readFileSync(fullPath, "utf8").split("\n");   
     
     fs.appendFileSync(fullPath, `\n ## ${timestamp}`);
     fs.appendFileSync(fullPath, `\n ${text}\n`);
-    //content.push(`## ${timestamp}`);
-    //fs.writeFileSync(fullPath, content.join("\n"));
-    return res.status(200).json({ error: "Adicionado a nota existente" });
+    
+    return res.status(200).json({ ok: `Adicionado a nota existente no arquivo ${noteName}.md` });
   }else{
   fs.writeFileSync(fullPath, `## ${timestamp}\n${text}`);
-  res.json({ ok: "Arquivo criado com sucesso" });
+  res.status(200).json({ ok: `Arquivo criado com nova nota em ${noteName}.md` });
   }
 }catch(error){
   res.status(500).json({ error: "Erro ao criar a nota" });
