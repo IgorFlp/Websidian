@@ -1,0 +1,19 @@
+- [] Refactor task page as "Scheduled page" and keep view for "today, this week, this month" for whole vault.
+- [] Create a sidebar file with functionalities: 
+    - Expand/Colapse folders.
+    - Add file to Task filters.
+    - Open file on editor.
+    - Click and hold to select file.
+    - When file selected: Show buttons on the top for, Add to task view or Open on editor.
+    - Sidebar is allowed to take up to 80% of the screen width.
+    - Since we are not using react or any framework with state handling, task view filtered files CAN be stored on localstorage or other storage compatible withe older devices and browsers, If user changes pages and come back to task page it shouldn't need to select files again.
+
+- [] Create new task page with filter
+    - User can select files on file manager sidebar and add them to the task view.
+    - Each file becomes 1 container with its tasks on it
+    - Fitting at max 10 visible tasks hiding the rest on scroll.
+    - Container always load with the last checked task as the first visible on the container.
+    - Add button on top for cleaning localstorage or other storage mean of selecting filters.
+    - Add button to SAVE PRESET saving files on the backend on a JSON so it can be loaded.
+    - Add a button to LOAD PRESET.
+    - Task Page fetch all presets on load.
