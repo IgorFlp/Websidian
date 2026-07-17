@@ -150,17 +150,36 @@ app.get("/logout", (req, res) => {
 });
 
 app.get("/api/files", authApi, (req, res) => {
-  function scan(dir) {
-    fs.readdirSync(dir).forEach((file) => {
-      const full = path.join(dir, file);
+    const ignoredDirs = new Set([
+    "node_modules",
+    ".git",
+    "dist",
+    "build",
+    ".next",
+    ".obsidian",
+  ]);
 
-      if (fs.statSync(full).isDirectory()) {
-        return scan(full);
-      }
-    });
+const files = [];
+
+function scan(dir) {
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+
+  for (const entry of entries) {
+    if (ignoredDirs.has(entry.name)) {
+      continue;
+    }
+
+    const full = path.join(dir, entry.name);
+
+    if (entry.isDirectory()) {
+      scan(full);
+    } else if (!entry.name.startsWith(".")) {
+      files.push(path.relative(VAULT, full));
+    }
   }
-  let files = fs.readdirSync(VAULT, { recursive: true });
-  files = files.filter((file) => !file.startsWith(".") && !fs.statSync(path.join(VAULT, file)).isDirectory());
+}
+
+  scan(VAULT);
   res.json({ files });
 });
 app.get("/api/tasks", authApi, (req, res) => {
@@ -291,6 +310,6 @@ app.post("/api/newNote", authApi, (req, res) => {
 }
 });
 
-app.listen(3000, "0.0.0.0", () =>
-  console.log("Dashboard rodando na porta 3000"),
+app.listen(9090, "0.0.0.0", () =>
+  console.log("Dashboard rodando na porta 9090"),
 );
