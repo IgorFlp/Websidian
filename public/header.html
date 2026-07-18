@@ -1,34 +1,19 @@
 <div class="header-container">
   <button class="header-item sidebar-toggle" id="sidebar-toggle"
     onclick="window.toggleSidebar && window.toggleSidebar()" aria-label="Abrir/fechar menu de arquivos">
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 16 16" class="header-icons" fill="#fff">
-      <path fill-rule="evenodd"
-        d="M2 2.5a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5V3a.5.5 0 0 0-.5-.5zM3 3H2v1h1z" />
-      <path
-        d="M5 3.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5M5.5 7a.5.5 0 0 0 0 1h9a.5.5 0 0 0 0-1zm0 4a.5.5 0 0 0 0 1h9a.5.5 0 0 0 0-1z" />
-      <path fill-rule="evenodd"
-        d="M1.5 7a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5H2a.5.5 0 0 1-.5-.5zm0 3.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5H2a.5.5 0 0 1-.5-.5z" />
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" width="24" height="24">
+      <path style="color: white;" d="M4 6H20M4 12H14M4 18H9" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" />
     </svg>
   </button>
   <a href="/index.html" class="header-item">
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" class="bi bi-list-task header-icons"
-      viewBox="0 0 16 16">
-      <path fill-rule="evenodd"
-        d="M2 2.5a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5V3a.5.5 0 0 0-.5-.5zM3 3H2v1h1z" />
+    <svg style="color: white;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" width="24"
+      height="24">
       <path
-        d="M5 3.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5M5.5 7a.5.5 0 0 0 0 1h9a.5.5 0 0 0 0-1zM5.5 11a.5.5 0 0 0 0 1h9a.5.5 0 0 0 0-1z" />
-      <path fill-rule="evenodd"
-        d="M1.5 7a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5H2a.5.5 0 0 1-.5-.5zM2 7h1v1H2zm0 3.5a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5zm1 .5H2v1h1z" />
+        d="M9 21H4C3.44772 21 3 20.5523 3 20V12.4142C3 12.149 3.10536 11.8946 3.29289 11.7071L11.2929 3.70711C11.6834 3.31658 12.3166 3.31658 12.7071 3.70711L20.7071 11.7071C20.8946 11.8946 21 12.149 21 12.4142V20C21 20.5523 20.5523 21 20 21H15M9 21H15M9 21V15C9 14.4477 9.44772 14 10 14H14C14.5523 14 15 14.4477 15 15V21"
+        stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
     </svg>
     <label>Home</label>
-  </a>
-  <a href="/files.html" class="header-item">
-    <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" class="bi bi-folder header-icons"
-      viewBox="0 0 16 16">
-      <path
-        d="M.54 3.87.5 3a2 2 0 0 1 2-2h3.672a2 2 0 0 1 1.414.586l.828.828A2 2 0 0 0 9.828 3h3.982a2 2 0 0 1 1.992 2.181l-.637 7A2 2 0 0 1 13.174 14H2.826a2 2 0 0 1-1.991-1.819l-.637-7a2 2 0 0 1 .342-1.31zM2.19 4a1 1 0 0 0-.996 1.09l.637 7a1 1 0 0 0 .995.91h10.348a1 1 0 0 0 .995-.91l.637-7A1 1 0 0 0 13.81 4zm4.69-1.707A1 1 0 0 0 6.172 2H2.5a1 1 0 0 0-1 .981l.006.139q.323-.119.684-.12h5.396z" />
-    </svg>
-    <label>Arquivos</label>
   </a>
   <a href="/scheduled.html" class="header-item">
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" class="header-icons" viewBox="0 0 16 16" fill="#fff">
@@ -36,5 +21,16 @@
         d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1z" />
     </svg>
     <label>Agendados</label>
+  </a>
+  <a href="/tasks.html" class="header-item">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" class="header-icons" viewBox="0 0 16 16" fill="#fff">
+      <path fill-rule="evenodd"
+        d="M2 2.5a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5V3a.5.5 0 0 0-.5-.5zM3 3H2v1h1z" />
+      <path
+        d="M5 3.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5M5.5 7a.5.5 0 0 0 0 1h9a.5.5 0 0 0 0-1zM5.5 11a.5.5 0 0 0 0 1h9a.5.5 0 0 0 0-1z" />
+      <path fill-rule="evenodd"
+        d="M1.5 7a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5H2a.5.5 0 0 1-.5-.5zm0 3.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5H2a.5.5 0 0 1-.5-.5z" />
+    </svg>
+    <label>Tarefas</label>
   </a>
 </div>

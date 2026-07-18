@@ -62,6 +62,7 @@
   var selectionCount = null;
   var btnOpenEditor = null;
   var btnClearSelection = null;
+  var btnAddTaskView = null;
   var sidebarClose = null;
   var sidebarBackdrop = null;
   var sidebarResizer = null;
@@ -77,7 +78,8 @@
   var STORAGE_KEYS = {
     FOLDERS: 'sidebar:folders',
     SELECTED_FILE: 'sidebar:selectedFile',
-    WIDTH: 'sidebar:width'
+    WIDTH: 'sidebar:width',
+    TASK_FILTER_FILES: 'taskFilterFiles'
   };
 
   var MAX_WIDTH = Math.min(window.innerWidth * 0.8, 320);
@@ -136,6 +138,7 @@
     sidebarToolbar = document.getElementById('sidebar-toolbar');
     selectionCount = document.getElementById('selection-count');
     btnOpenEditor = document.getElementById('btn-open-editor');
+    btnAddTaskView = document.getElementById('btn-add-task-view');
     btnClearSelection = document.getElementById('btn-clear-selection');
     sidebarClose = document.getElementById('sidebar-close');
     sidebarBackdrop = document.getElementById('sidebar-backdrop');
@@ -180,6 +183,7 @@
 
     btnClearSelection.addEventListener('click', clearSelection);
     btnOpenEditor.addEventListener('click', openInEditor);
+    btnAddTaskView.addEventListener('click', addToTaskView);
 
     document.addEventListener('keydown', function(e) {
       if (e.key === 'Escape' && sidebar.classList.contains('open')) {
@@ -277,11 +281,6 @@
         e.stopPropagation();
         toggleFolder(li, node.path);
       });
-      header.addEventListener('touchstart', function(e) {
-        e.stopPropagation();
-        e.preventDefault();
-        toggleFolder(li, node.path);
-      }, { passive: false });
       li.appendChild(header);
 
       if (node.children && node.children.length > 0) {
@@ -347,13 +346,6 @@
     li.addEventListener('mousedown', startLongPress);
     li.addEventListener('mouseup', endLongPress);
     li.addEventListener('mousemove', moveLongPress);
-
-    li.addEventListener('click', function(e) {
-      if (touchMoved) return;
-      if (Date.now() - touchStartTime < 500) {
-        openInEditorFromPath(li.dataset.path);
-      }
-    });
   }
 
   function selectFile(li) {
@@ -381,6 +373,14 @@
     selectedFiles = [];
     updateToolbar();
     localStorage.setItem(STORAGE_KEYS.SELECTED_FILE, JSON.stringify(selectedFiles));
+    localStorage.removeItem(STORAGE_KEYS.TASK_FILTER_FILES);
+  }
+
+  function addToTaskView() {
+    if (selectedFiles.length === 0) return;
+
+    localStorage.setItem(STORAGE_KEYS.TASK_FILTER_FILES, JSON.stringify(selectedFiles));
+    alert(selectedFiles.length + ' arquivo(s) adicionado(s) à visualização de tarefas');
   }
 
   function updateToolbar() {
@@ -388,9 +388,11 @@
       sidebarToolbar.style.display = 'flex';
       selectionCount.textContent = selectedFiles.length + ' selecionado(s)';
       btnOpenEditor.disabled = false;
+      btnAddTaskView.disabled = false;
     } else {
       sidebarToolbar.style.display = 'none';
       btnOpenEditor.disabled = true;
+      btnAddTaskView.disabled = true;
     }
   }
 
