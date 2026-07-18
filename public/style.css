@@ -75,12 +75,24 @@ body {
   margin-left: 5px;
 }
 .header-item {
+  position: relative;
   display: flex;
   align-items: center;
   margin-right: 30px;
   padding: 10px;
   border-radius: 8px;
+  text-decoration: none;
 }
+.header-item ::after {
+  content:'';
+  position: absolute;
+  top: -20px;
+  bottom: -20px;
+  left: -20px;
+  right: -20px;
+ 
+}
+
 .header-item:hover {
   background-color: rgba(0, 0, 0, 0.432);
 }
@@ -101,6 +113,7 @@ body {
   display: inline-block;
 }
 .sidebar-toggle {
+  position: relative;
   background: none;
   border: none;
   padding: 8px;
@@ -109,9 +122,6 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-}
-.sidebar-toggle:hover {
-  background: rgba(255, 255, 255, 0.1);
 }
 
 .tasks-section {
