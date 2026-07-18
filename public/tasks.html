@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Tarefas</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="tasks.css" />
+</head>
+
+<body>
+  <div class="header-placeholder"></div>
+  <div id="sidebar-placeholder"></div>
+  <div class="tasks-container">
+    <div class="tasks-header">
+      <h1>Tarefas</h1>
+      <div class="tasks-toolbar">
+        <select id="load-preset" disabled>
+          <option value="">Carregar preset...</option>
+        </select>
+        <button class="btn" id="btn-save-preset">Salvar Preset</button>
+        <button class="btn" id="btn-clear-filters">Limpar Filtros</button>
+      </div>
+    </div>
+    <div id="empty-state" class="empty-state" style="display: none;">
+      <p>Nenhum arquivo selecionado</p>
+      <p class="hint">Selecione arquivos na sidebar e clique em "Adicionar à Visualização de Tarefas"</p>
+    </div>
+    <div id="tasks-content"></div>
+  </div>
+  <script src="tasks.js"></script>
+</body>
+</html>

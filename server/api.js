@@ -14,6 +14,8 @@ const __dirname = path.dirname(__filename);
 const IGNORED_DIRS = [".obsidian", ".trash", ".git", "node_modules"];
 const VAULT = process.env.VAULT_PATH || "/vault";
 const PUBLIC = path.join(__dirname, "../public");
+const DATA_DIR = path.join(__dirname, "../data");
+const PRESETS_FILE = path.join(DATA_DIR, "presets.json");
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -79,6 +81,9 @@ app.get("/files", authPage, (req, res) => {
 });
 app.get("/scheduled", authPage, (req, res) => {
   res.sendFile(path.join(process.cwd(),"public/scheduled.html"));
+});
+app.get("/tasks", authPage, (req, res) => {
+  res.sendFile(path.join(process.cwd(),"public/tasks.html"));
 });
 app.get("/login", (req, res) => {
   if (req.session.auth) return res.redirect("/");
@@ -275,7 +280,7 @@ app.get("/api/tasks", authApi, (req, res) => {
             recurringRule: parsed.recurringRule || null,
 
             // info do arquivo
-            file: full,
+            file: path.relative(VAULT, full),
             line: index,
           });
           // console.log(tasks);
@@ -305,18 +310,83 @@ app.get("/api/file-content", authApi, (req, res) => {
 });
 app.post("/api/tasks/toggle", authApi, (req, res) => {
   const { file, line } = req.body;
-  const content = fs.readFileSync(file, "utf8").split("\n");
+  const fullPath = path.join(VAULT, file);
+  const content = fs.readFileSync(fullPath, "utf8").split("\n");
   content[line] = content[line].includes("[x]")
     ? content[line].replace("[x]", "[ ]")
     : content[line].replace("[ ]", "[x]") + ` ✅ ${new Date().toISOString().split("T")[0]}`;
-    
+
   if (content[line].includes("🔁")) {
     const task = parseTask(content[line]);
 
     CreateTask(content, task, line);
 
   }
-  fs.writeFileSync(file, content.join("\n"));
+  fs.writeFileSync(fullPath, content.join("\n"));
+  res.json({ ok: true });
+});
+
+// Helper functions for presets
+function loadPresets() {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    if (!fs.existsSync(PRESETS_FILE)) {
+      fs.writeFileSync(PRESETS_FILE, JSON.stringify({ presets: [] }, null, 2));
+      return { presets: [] };
+    }
+    const data = fs.readFileSync(PRESETS_FILE, "utf8");
+    return JSON.parse(data);
+  } catch (e) {
+    console.error("Error loading presets:", e);
+    return { presets: [] };
+  }
+}
+
+function savePresets(presets) {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    fs.writeFileSync(PRESETS_FILE, JSON.stringify({ presets }, null, 2));
+  } catch (e) {
+    console.error("Error saving presets:", e);
+  }
+}
+
+// Presets API endpoints
+app.get("/api/presets", authApi, (req, res) => {
+  const data = loadPresets();
+  res.json(data);
+});
+
+app.post("/api/presets", authApi, (req, res) => {
+  const { name, files } = req.body;
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: "Name is required" });
+  }
+  const data = loadPresets();
+  const newPreset = {
+    id: Date.now().toString(),
+    name: name.trim(),
+    files: files || [],
+    createdAt: new Date().toISOString(),
+  };
+  data.presets.push(newPreset);
+  savePresets(data.presets);
+  res.status(201).json({ preset: newPreset });
+});
+
+app.delete("/api/presets/:id", authApi, (req, res) => {
+  const { id } = req.params;
+  const data = loadPresets();
+  const index = data.presets.findIndex((p) => p.id === id);
+  if (index === -1) {
+    return res.status(404).json({ error: "Preset not found" });
+  }
+  data.presets.splice(index, 1);
+  savePresets(data.presets);
   res.json({ ok: true });
 });
 
@@ -363,6 +433,11 @@ app.post("/api/newNote", authApi, (req, res) => {
   res.status(500).json({ error: "Erro ao criar a nota" });
 }
 });
+
+// Ensure data directory exists
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+}
 
 app.listen(9090, "0.0.0.0", () =>
   console.log("Dashboard rodando na porta 9090"),
