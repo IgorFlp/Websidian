@@ -15,22 +15,22 @@ function httpGet(url, callback) {
     }
 
     if (xhr.status === 200) {
-      
-        
-        if (url.indexOf(".html") !== -1) {
+      try {
+        if (url.indexOf(".html") !== -1 || url.indexOf(".css") !== -1) {
           callback(xhr.responseText);
           return;
         }
-        
         var data = JSON.parse(xhr.responseText);
-        
         callback(data);
-      
+      } catch (e) {
+        alert("Erro ao processar dados");
+      }
     }
   };
 
   xhr.send();
 }
+
 function getQueryParam(name) {
   var query = window.location.search.substring(1);
   var vars = query.split("&");
@@ -47,7 +47,7 @@ function getQueryParam(name) {
 function GetFileContent(filePath, callback) {
   httpGet(
     "/api/file-content?path=" + encodeURIComponent(filePath),
-    function (content) {      
+    function (content) {
       document.querySelector("#content").innerHTML = marked(content.content);
     }
   );
@@ -58,7 +58,32 @@ window.onload = function () {
   if (filePath) {
     GetFileContent(filePath);
   }
+
+  var sidebarPlaceholder = document.getElementById("sidebar-placeholder");
+  if (sidebarPlaceholder) {
+    var style = document.createElement("link");
+    style.rel = "stylesheet";
+    style.href = "sidebar.css";
+    document.head.appendChild(style);
+
+    httpGet("sidebar.html", function (html) {
+      sidebarPlaceholder.innerHTML = html;
+      loadScript("sidebar.js", function () {
+        if (window.initSidebar) {
+          window.initSidebar();
+        }
+      });
+    });
+  }
+
   httpGet("header.html", function (data) {
     document.querySelector(".header-placeholder").innerHTML = data;
   });
 };
+
+function loadScript(src, callback) {
+  var script = document.createElement("script");
+  script.src = src;
+  script.onload = callback;
+  document.head.appendChild(script);
+}

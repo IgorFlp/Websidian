@@ -77,6 +77,9 @@ app.use("/download", authPage, express.static(path.join(VAULT, "Downloads")));
 app.get("/files", authPage, (req, res) => {
   res.sendFile(path.join(process.cwd(), "public/files.html"));
 });
+app.get("/scheduled", authPage, (req, res) => {
+  res.sendFile(path.join(process.cwd(),"public/scheduled.html"));
+});
 app.get("/login", (req, res) => {
   if (req.session.auth) return res.redirect("/");
   res.sendFile(path.join(process.cwd(), "public/login.html"));
@@ -92,6 +95,7 @@ function parseTask(line) {
 
   // remove "- [ ] " ou "- [x] "
   var rawText = line.replace(/- \[[ x]\]\s*/, "");
+
   task.text = rawText;
 
   // ---------- TAGS ----------
@@ -149,92 +153,142 @@ app.get("/logout", (req, res) => {
   });
 });
 
+/**
+ * @typedef {import('../shared-types/file-types').FileNode} FileNode
+ * @typedef {import('../shared-types/file-types').FileTree} FileTree
+ * @typedef {import('../shared-types/file-types').ApiFilesResponse} ApiFilesResponse
+ */
+
 app.get("/api/files", authApi, (req, res) => {
-    const ignoredDirs = new Set([
+  const flat = req.query.flat === "true";
+  const ignoredDirs = new Set([
     "node_modules",
     ".git",
     "dist",
     "build",
     ".next",
     ".obsidian",
+    ".trash",
   ]);
 
-const files = [];
+  function buildTree(dir) {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    const nodes = [];
 
-function scan(dir) {
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (ignoredDirs.has(entry.name) || entry.name.startsWith(".")) {
+        continue;
+      }
 
-  for (const entry of entries) {
-    if (ignoredDirs.has(entry.name)) {
-      continue;
+      const full = path.join(dir, entry.name);
+      const relPath = path.relative(VAULT, full);
+
+      if (entry.isDirectory()) {
+        const children = buildTree(full);
+        if (children.length > 0) {
+          nodes.push({
+            type: "folder",
+            name: entry.name,
+            path: relPath,
+            children,
+          });
+        }
+      } else if (entry.name.endsWith(".md")) {
+        nodes.push({
+          type: "file",
+          name: entry.name,
+          path: relPath,
+          extension: "md",
+        });
+      }
     }
 
-    const full = path.join(dir, entry.name);
+    nodes.sort((a, b) => {
+      if (a.type !== b.type) return a.type === "folder" ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
 
-    if (entry.isDirectory()) {
-      scan(full);
-    } else if (!entry.name.startsWith(".")) {
-      files.push(path.relative(VAULT, full));
-    }
+    return nodes;
   }
-}
 
-  scan(VAULT);
-  res.json({ files });
+  const tree = buildTree(VAULT);
+
+  if (flat) {
+    const files = [];
+    function flatten(nodes) {
+      for (const node of nodes) {
+        if (node.type === "file") {
+          files.push(node.path);
+        } else if (node.children) {
+          flatten(node.children);
+        }
+      }
+    }
+    flatten(tree);
+    res.json({ files });
+  } else {
+    res.json({ tree });
+  }
 });
 app.get("/api/tasks", authApi, (req, res) => {
-  const tasks = [];
+  try {
+    const tasks = [];
 
-  function scan(dir) {
-    fs.readdirSync(dir).forEach((file) => {
-      const full = path.join(dir, file);
+    function scan(dir) {
+      fs.readdirSync(dir).forEach((file) => {
+        const full = path.join(dir, file);
 
-      if (
-        fs.statSync(full).isDirectory() &&
-        (file.startsWith(".") || IGNORED_DIRS.includes(file))
-      ) {
-        return;
-      }
+        if (
+          fs.statSync(full).isDirectory() &&
+          (file.startsWith(".") || IGNORED_DIRS.includes(file))
+        ) {
+          return;
+        }
 
-      if (fs.statSync(full).isDirectory()) {
-        return scan(full);
-      }
+        if (fs.statSync(full).isDirectory()) {
+          return scan(full);
+        }
 
-      if (!file.endsWith(".md")) return;
+        if (!file.endsWith(".md")) return;
 
-      const lines = fs.readFileSync(full, "utf8").split("\n");
+        const lines = fs.readFileSync(full, "utf8").split("\n");
 
-      lines.forEach((line, index) => {
-        if (!line.match(/- \[[ x]\]/)) return;
+        lines.forEach((line, index) => {
+          if (!line.match(/- \[[ x]\]/)) return;
 
-        // 🔹 parseTask já extrai tudo
-        const parsed = parseTask(line);
+          // 🔹 parseTask já extrai tudo
+          const parsed = parseTask(line);
 
-        tasks.push({
-          text: parsed.text,
-          done: parsed.done,
+          tasks.push({
+            text: parsed.text,
+            done: parsed.done,
+            displayText: parsed.displayText,
 
-          // datas (ISO ou null)
-          due: parsed.due || null,
-          scheduled: parsed.scheduled || null,
-          doneDate: parsed.doneDate || null,
+            // datas (ISO ou null)
+            due: parsed.due || null,
+            scheduled: parsed.scheduled || null,
+            doneDate: parsed.doneDate || null,
 
-          // metadata
-          tags: parsed.tags || [],
-          recurring: parsed.recurring || false,
-          recurringRule: parsed.recurringRule || null,
+            // metadata
+            tags: parsed.tags || [],
+            recurring: parsed.recurring || false,
+            recurringRule: parsed.recurringRule || null,
 
-          // info do arquivo
-          file: full,
-          line: index,
+            // info do arquivo
+            file: full,
+            line: index,
+          });
+          // console.log(tasks);
         });
-        // console.log(tasks);
       });
-    });
-  }
+    }
 
-  scan(VAULT);
-  res.json(tasks);
+    scan(VAULT);
+    res.json(tasks);
+  } catch (e) {
+    console.error("Error scanning tasks:", e);
+    res.status(500).json({ error: e.message });
+  }
 });
 app.get("/api/file-content", authApi, (req, res) => {
   const relPath = req.query.path;
