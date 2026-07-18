@@ -16,7 +16,7 @@ function httpGet(url, callback) {
 
     if (xhr.status === 200) {
       try {
-        if (url.indexOf(".html") !== -1 || url.indexOf(".css") !== -1) {
+        if (url.indexOf(".html") !== -1) {
           callback(xhr.responseText);
           return;
         }
@@ -32,25 +32,16 @@ function httpGet(url, callback) {
 }
 
 window.onload = function () {
-  var sidebarPlaceholder = document.getElementById("sidebar-placeholder");
-  if (sidebarPlaceholder) {
-    var style = document.createElement("link");
-    style.rel = "stylesheet";
-    style.href = "sidebar.css";
-    document.head.appendChild(style);
-
-    httpGet("sidebar.html", function (html) {
-      sidebarPlaceholder.innerHTML = html;
-      loadScript("sidebar.js", function () {
-        if (window.initSidebar) {
-          window.initSidebar();
-        }
-      });
-    });
-  }
-
   httpGet("header.html", function (data) {
     document.querySelector(".header-placeholder").innerHTML = data;
+  });
+  httpGet("sidebar.html", function (data) {
+    document.querySelector("#sidebar-placeholder").innerHTML = data;
+    loadScript("sidebar.js", function () {
+      if (window.initSidebar) {
+        window.initSidebar();
+      }
+    });
   });
 };
 
