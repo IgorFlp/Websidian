@@ -56,11 +56,11 @@ The system SHALL delete preset via `DELETE /api/presets/:id`.
 - **WHEN** unauthenticated `DELETE /api/presets/:id`
 - **THEN** returns 401
 
-### Requirement: Save Preset button in sidebar
-The system SHALL provide "Save Preset" button in sidebar toolbar that prompts for name and saves current `taskFilterFiles` as preset.
+### Requirement: Save Preset button on task page
+The system SHALL provide "Save Preset" button on task page that prompts for name and saves current `taskFilterFiles` as preset.
 
 #### Scenario: Click Save Preset
-- **WHEN** user clicks "Save Preset" in sidebar
+- **WHEN** user clicks "Save Preset" on task page
 - **THEN** prompt for name, POST to `/api/presets` with current file filters
 
 #### Scenario: Save Preset success

@@ -9,24 +9,13 @@ The sidebar header SHALL include a "Task Page" button that navigates to `/tasks`
 - **WHEN** user clicks "Task Page" button in sidebar header
 - **THEN** navigate to `/tasks` page
 
-#### Requirement: Save Preset button in sidebar toolbar
-The sidebar toolbar SHALL include a "Save Preset" button (visible when files selected) that saves current selection as preset.
+#### Requirement: Add to Task View button in sidebar toolbar
+The sidebar toolbar SHALL include an "Add to Task View" button (visible when files selected) that adds selected files to task filter via localStorage.
 
-#### Scenario: Save Preset button visible
+#### Scenario: Add to Task View button visible
 - **WHEN** files selected in sidebar
-- **THEN** "Save Preset" button shown in toolbar
+- **THEN** "Add to Task View" button shown in toolbar
 
-#### Scenario: Click Save Preset
-- **WHEN** user clicks "Save Preset"
-- **THEN** prompt for name, save preset via `POST /api/presets`
-
-#### Requirement: Persist Filters toggle in sidebar toolbar
-The sidebar toolbar SHALL include a "Persist Filters" toggle switch controlling whether `taskFilterFiles` survives clear/close.
-
-#### Scenario: Persist Filters toggle ON
-- **WHEN** toggle is ON
-- **THEN** `taskFilterFiles` retained on sidebar close/clear selection
-
-#### Scenario: Persist Filters toggle OFF
-- **WHEN** toggle is OFF and user clicks "Clear Selection"
-- **THEN** `taskFilterFiles` cleared along with selection
+#### Scenario: Click Add to Task View
+- **WHEN** user clicks "Add to Task View"
+- **THEN** selected file paths saved to localStorage `taskFilterFiles` as JSON array, task page notified to refresh

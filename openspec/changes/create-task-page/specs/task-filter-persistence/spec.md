@@ -11,17 +11,6 @@ The system SHALL store selected file paths in localStorage key `taskFilterFiles`
 - **WHEN** task page loads
 - **THEN** page reads localStorage `taskFilterFiles` and uses those files for filtering
 
-### Requirement: Persist Filters toggle in sidebar
-The system SHALL provide a "Persist Filters" toggle in sidebar toolbar that controls whether `taskFilterFiles` survives sidebar close/clear.
-
-#### Scenario: Persist Filters enabled
-- **WHEN** "Persist Filters" toggle is ON and user closes sidebar
-- **THEN** localStorage `taskFilterFiles` retained
-
-#### Scenario: Persist Filters disabled
-- **WHEN** "Persist Filters" toggle is OFF and user clicks "Clear Selection" in sidebar
-- **THEN** localStorage `taskFilterFiles` cleared along with selection
-
 ### Requirement: Sync sidebar selection with taskFilterFiles
 The system SHALL sync sidebar file selection with `taskFilterFiles` when "Add to Task View" is clicked.
 
