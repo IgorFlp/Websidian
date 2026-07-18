@@ -262,7 +262,7 @@ app.get("/api/tasks", authApi, (req, res) => {
           tasks.push({
             text: parsed.text,
             done: parsed.done,
-            displayText: parsed.displayText,
+            
 
             // datas (ISO ou null)
             due: parsed.due || null,
