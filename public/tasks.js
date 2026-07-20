@@ -188,6 +188,41 @@ function httpDelete(url, callback) {
   xhr.send();
 }
 
+function httpPut(url, data, callback) {
+  var xhr = new XMLHttpRequest();
+  xhr.open("PUT", url, true);
+  xhr.setRequestHeader("Content-Type", "application/json");
+
+  xhr.onreadystatechange = function () {
+    if (xhr.readyState !== 4) return;
+
+    if (xhr.status === 401) {
+      window.location.href = "/login";
+      return;
+    }
+
+    if (xhr.status === 200) {
+      try {
+        var response = JSON.parse(xhr.responseText);
+        callback(null, response);
+      } catch (e) {
+        console.log("Error: ", e);
+        callback(e);
+      }
+    } else {
+      console.log("HTTP Error: " + xhr.status + " for " + url);
+      callback(new Error("Erro: " + xhr.status));
+    }
+  };
+
+  xhr.onerror = function() {
+    console.log("Network error for " + url);
+    callback(new Error("Erro de conexão"));
+  };
+
+  xhr.send(JSON.stringify(data));
+}
+
 function parseISO(dateStr) {
   if (!dateStr) return null;
   var p = dateStr.split("-");
@@ -339,23 +374,38 @@ function loadPresets() {
     var select = document.getElementById('load-preset');
     if (!select) return;
 
-    while (select.options.length > 1) {
-      select.remove(1);
-    }
-
     if (data && data.presets && data.presets.length > 0) {
       select.disabled = false;
-      for (var i = 0; i < data.presets.length; i++) {
-        var preset = data.presets[i];
+      var presets = data.presets.slice().sort(function(a, b) {
+        return (a.order || 0) - (b.order || 0);
+      });
+      for (var i = 0; i < presets.length; i++) {
+        var preset = presets[i];
         var option = document.createElement('option');
         option.value = preset.id;
         option.textContent = preset.name;
         select.appendChild(option);
       }
+      if (window.currentPresetId) {
+        select.value = window.currentPresetId;
+      }
     } else {
       select.disabled = true;
     }
   });
+}
+
+function getActiveVaultIndex() {
+  if (window.currentPresetId) {
+    var presetData = localStorage.getItem('currentPresetData');
+    if (presetData) {
+      try {
+        var preset = JSON.parse(presetData);
+        if (preset.vaultIndex !== undefined) return preset.vaultIndex.toString();
+      } catch (e) {}
+    }
+  }
+  return localStorage.getItem("selectedVault") || "0";
 }
 
 function loadTasks() {
@@ -377,7 +427,18 @@ function loadTasks() {
 
   showTasksContent();
 
-  httpGet("/api/tasks", function(tasks) {
+  var presetData = null;
+  try {
+    var stored = localStorage.getItem('currentPresetData');
+    if (stored) presetData = JSON.parse(stored);
+  } catch (e) {}
+
+  var fileOrder = {};
+  if (presetData && presetData.files) {
+    presetData.files.forEach(function(f, i) { fileOrder[f.path] = f.order !== undefined ? f.order : i; });
+  }
+
+  httpGet("/api/tasks?vault=" + getActiveVaultIndex(), function(tasks) {
     if (!Array.isArray(tasks)) {
       alert("Resposta inválida do servidor: " + JSON.stringify(tasks));
       return;
@@ -394,12 +455,17 @@ function loadTasks() {
     content.innerHTML = '';
 
     var hasTasks = false;
-    for (var filePath in groups) {
-      if (groups.hasOwnProperty(filePath)) {
-        hasTasks = true;
-        var container = renderFileContainer(filePath, groups[filePath]);
-        content.appendChild(container);
-      }
+    var filePaths = Object.keys(groups);
+    filePaths.sort(function(a, b) {
+      var oa = fileOrder[a] !== undefined ? fileOrder[a] : 9999;
+      var ob = fileOrder[b] !== undefined ? fileOrder[b] : 9999;
+      return oa - ob;
+    });
+    for (var i = 0; i < filePaths.length; i++) {
+      var filePath = filePaths[i];
+      hasTasks = true;
+      var container = renderFileContainer(filePath, groups[filePath]);
+      content.appendChild(container);
     }
 
     if (!hasTasks) {
@@ -409,7 +475,8 @@ function loadTasks() {
 }
 
 function toggleTask(task) {
-  httpPost("/api/tasks/toggle", { file: task.file, line: task.line }, function(err, response) {
+  var vaultIndex = getActiveVaultIndex();
+  httpPost("/api/tasks/toggle", { file: task.file, line: task.line, vaultIndex: vaultIndex }, function(err, response) {
     if (err) {
       alert("Erro ao alternar tarefa: " + err.message);
       return;
@@ -420,6 +487,10 @@ function toggleTask(task) {
 
 function clearFilters() {
   localStorage.removeItem('taskFilterFiles');
+  localStorage.removeItem('currentPresetData');
+  window.currentPresetId = null;
+  var select = document.getElementById('load-preset');
+  if (select) select.value = "";
   showEmptyState();
   loadTasks();
 }
@@ -445,7 +516,10 @@ function savePreset() {
     return;
   }
 
-  httpPost("/api/presets", { name: name.trim(), files: filterFiles }, function(err, response) {
+  var vaultIndex = localStorage.getItem("selectedVault") || "0";
+  var filesWithOrder = filterFiles.map(function(f, i) { return { path: f, order: i }; });
+
+  httpPost("/api/presets", { name: name.trim(), files: filesWithOrder, vaultIndex: parseInt(vaultIndex, 10) }, function(err, response) {
     if (err) {
       alert("Erro ao salvar preset: " + err.message);
       return;
@@ -459,7 +533,12 @@ function onLoadPresetChange() {
   var select = document.getElementById('load-preset');
   var presetId = select.value;
 
-  if (!presetId) return;
+  if (presetId === "") {
+    localStorage.removeItem('currentPresetData');
+    window.currentPresetId = null;
+    loadTasks();
+    return;
+  }
 
   httpGet("/api/presets", function(data) {
     if (!data || !data.presets) return;
@@ -467,9 +546,284 @@ function onLoadPresetChange() {
     var preset = data.presets.find(function(p) { return p.id === presetId; });
     if (!preset) return;
 
-    localStorage.setItem('taskFilterFiles', JSON.stringify(preset.files || []));
+    var files = (preset.files || []).map(function(f) { return typeof f === 'string' ? { path: f } : f; });
+    localStorage.setItem('taskFilterFiles', JSON.stringify(files.map(function(f) { return f.path; })));
+
+    localStorage.setItem('currentPresetData', JSON.stringify({
+      vaultIndex: preset.vaultIndex,
+      files: files
+    }));
+    window.currentPresetId = presetId;
+
     loadTasks();
-    select.value = '';
+    select.value = presetId;
+  });
+}
+
+function movePreset(presetId, direction) {
+  httpGet("/api/presets", function(data) {
+    if (!data || !data.presets) return;
+
+    var presets = data.presets.slice().sort(function(a, b) {
+      return (a.order || 0) - (b.order || 0);
+    });
+
+    var index = presets.findIndex(function(p) { return p.id === presetId; });
+    if (index === -1) return;
+
+    var newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= presets.length) return;
+
+    var temp = presets[index].order;
+    presets[index].order = presets[newIndex].order;
+    presets[newIndex].order = temp;
+
+    httpPut("/api/presets/" + presetId, { order: presets[index].order }, function(err) {
+      if (!err) loadPresets();
+    });
+
+    httpPut("/api/presets/" + presets[newIndex].id, { order: presets[newIndex].order }, function(err) {
+      if (!err) loadPresets();
+    });
+  });
+}
+
+function openPresetManager() {
+  var modal = document.getElementById('preset-manager-modal');
+  if (!modal) return;
+  renderPresetManager();
+  modal.style.display = 'flex';
+}
+
+function closePresetManager() {
+  var modal = document.getElementById('preset-manager-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function renderPresetManager() {
+  var list = document.getElementById('preset-manager-list');
+  if (!list) return;
+  list.innerHTML = '<div class="loading-placeholder">Carregando...</div>';
+
+  httpGet("/api/presets", function(data) {
+    list.innerHTML = '';
+    if (!data || !data.presets || data.presets.length === 0) {
+      list.innerHTML = '<div class="empty-state">Nenhum preset salvo</div>';
+      return;
+    }
+    var presets = data.presets.slice().sort(function(a, b) {
+      return (a.order || 0) - (b.order || 0);
+    });
+    presets.forEach(function(preset) {
+      var item = document.createElement('div');
+      item.className = 'preset-manager-item';
+      item.draggable = true;
+      item.dataset.id = preset.id;
+      item.innerHTML = '<span class="preset-drag-handle">&#9776;</span>' +
+        '<span class="preset-name">' + escapeHtml(preset.name) + '</span>' +
+        '<span class="preset-vault">Vault ' + (preset.vaultIndex || 0) + '</span>' +
+        '<button class="btn-small preset-reorder-files" data-id="' + preset.id + '" data-name="' + escapeHtml(preset.name) + '">Ordenar Arquivos</button>' +
+        '<button class="btn-small preset-delete" data-id="' + preset.id + '">Excluir</button>';
+      list.appendChild(item);
+    });
+    initPresetDragDrop();
+    initPresetDelete();
+    initPresetFileReorder();
+  });
+}
+
+function initPresetDragDrop() {
+  var list = document.getElementById('preset-manager-list');
+  if (!list) return;
+  var items = list.querySelectorAll('.preset-manager-item');
+  var dragged = null;
+
+  items.forEach(function(item) {
+    item.addEventListener('dragstart', function(e) {
+      dragged = item;
+      item.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    item.addEventListener('dragend', function() {
+      item.classList.remove('dragging');
+      dragged = null;
+    });
+    item.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      if (dragged && dragged !== item) {
+        var rect = item.getBoundingClientRect();
+        var midY = rect.top + rect.height / 2;
+        if (e.clientY < midY) {
+          list.insertBefore(dragged, item);
+        } else {
+          list.insertBefore(dragged, item.nextSibling);
+        }
+      }
+    });
+  });
+}
+
+function initPresetDelete() {
+  var list = document.getElementById('preset-manager-list');
+  if (!list) return;
+  list.addEventListener('click', function(e) {
+    if (e.target.classList.contains('preset-delete')) {
+      var id = e.target.dataset.id;
+      if (confirm('Excluir preset?')) {
+        httpDelete("/api/presets/" + id, function(err) {
+          if (!err) renderPresetManager();
+        });
+      }
+    }
+  });
+}
+
+function savePresetOrder() {
+  var list = document.getElementById('preset-manager-list');
+  if (!list) return;
+  var items = list.querySelectorAll('.preset-manager-item');
+  var ids = Array.prototype.map.call(items, function(item) { return item.dataset.id; });
+  httpPut("/api/presets/reorder", { presetIds: ids }, function(err) {
+    if (!err) {
+      loadPresets();
+      closePresetManager();
+    }
+  });
+}
+
+function initPresetFileReorder() {
+  var list = document.getElementById('preset-manager-list');
+  if (!list) return;
+  list.addEventListener('click', function(e) {
+    if (e.target.classList.contains('preset-reorder-files')) {
+      var presetId = e.target.dataset.id;
+      var presetName = e.target.dataset.name;
+      openFileReorderModal(presetId, presetName);
+    }
+  });
+}
+
+function openFileReorderModal(presetId, presetName) {
+  var modal = document.getElementById('file-reorder-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'file-reorder-modal';
+    modal.className = 'modal-overlay';
+    modal.style.display = 'none';
+    modal.innerHTML = '<div class="modal">' +
+      '<div class="modal-header">' +
+        '<h2>Ordenar Arquivos: <span id="file-reorder-preset-name"></span></h2>' +
+        '<button class="modal-close" onclick="closeFileReorderModal()">&times;</button>' +
+      '</div>' +
+      '<div class="modal-body">' +
+        '<div id="file-reorder-list" class="preset-manager-list"></div>' +
+      '</div>' +
+      '<div class="modal-footer">' +
+        '<button class="btn" onclick="saveFileOrder()">Salvar Ordem</button>' +
+        '<button class="btn btn-secondary" onclick="closeFileReorderModal()">Fechar</button>' +
+      '</div>' +
+    '</div>';
+    document.body.appendChild(modal);
+  }
+  document.getElementById('file-reorder-preset-name').textContent = presetName;
+  modal.dataset.presetId = presetId;
+  modal.style.display = 'flex';
+  renderFileReorderList(presetId);
+}
+
+function closeFileReorderModal() {
+  var modal = document.getElementById('file-reorder-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function renderFileReorderList(presetId) {
+  var list = document.getElementById('file-reorder-list');
+  if (!list) return;
+  list.innerHTML = '<div class="loading-placeholder">Carregando...</div>';
+
+  httpGet("/api/presets", function(data) {
+    if (!data || !data.presets) return;
+    var preset = data.presets.find(function(p) { return p.id === presetId; });
+    if (!preset) return;
+
+    list.innerHTML = '';
+    var files = preset.files || [];
+    if (files.length === 0) {
+      list.innerHTML = '<div class="empty-state">Nenhum arquivo neste preset</div>';
+      return;
+    }
+    var normalizedFiles = files.map(function(f) { return typeof f === 'string' ? { path: f } : f; });
+    normalizedFiles.forEach(function(file, index) {
+      var item = document.createElement('div');
+      item.className = 'preset-manager-item';
+      item.dataset.path = file.path;
+      var fileName = escapeHtml(file.path.split(/[\\/]/).pop());
+      var upDisabled = index === 0 ? ' disabled' : '';
+      var downDisabled = index === normalizedFiles.length - 1 ? ' disabled' : '';
+      item.innerHTML = '<span class="preset-name">' + fileName + '</span>' +
+        '<span class="preset-vault">Ordem: ' + (index + 1) + '</span>' +
+        '<button class="btn-small btn-move-up' + upDisabled + '" data-action="up" title="Mover para cima" aria-label="Mover para cima"' + upDisabled + '>' +
+        '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"></polyline></svg></button>' +
+        '<button class="btn-small btn-move-down' + downDisabled + '" data-action="down" title="Mover para baixo" aria-label="Mover para baixo"' + downDisabled + '>' +
+        '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="6 9 12 15 18 9"></polyline></svg></button>';
+      list.appendChild(item);
+    });
+    initFileReorderButtons(list);
+  });
+}
+
+function initFileReorderButtons(list) {
+  if (!list) return;
+  list.addEventListener('click', function(e) {
+    var btn = e.target.closest('button[data-action]');
+    if (!btn) return;
+    var item = btn.closest('.preset-manager-item');
+    if (!item) return;
+    var action = btn.dataset.action;
+    var items = list.querySelectorAll('.preset-manager-item');
+    var index = Array.prototype.indexOf.call(items, item);
+    if (action === 'up' && index > 0) {
+      list.insertBefore(item, items[index - 1]);
+      updateFileOrderNumbers(list);
+    } else if (action === 'down' && index < items.length - 1) {
+      list.insertBefore(item, items[index + 1].nextSibling);
+      updateFileOrderNumbers(list);
+    }
+  });
+}
+
+function updateFileOrderNumbers(list) {
+  var items = list.querySelectorAll('.preset-manager-item');
+  items.forEach(function(item, index) {
+    var vaultSpan = item.querySelector('.preset-vault');
+    if (vaultSpan) vaultSpan.textContent = 'Ordem: ' + (index + 1);
+  });
+}
+
+function saveFileOrder() {
+  var modal = document.getElementById('file-reorder-modal');
+  if (!modal) return;
+  var presetId = modal.dataset.presetId;
+  var list = document.getElementById('file-reorder-list');
+  if (!list) return;
+
+  var items = list.querySelectorAll('.preset-manager-item');
+  var files = Array.prototype.map.call(items, function(item, index) { return { path: item.dataset.path, order: index }; });
+
+  httpGet("/api/presets", function(data) {
+    if (!data || !data.presets) return;
+    var presetIndex = data.presets.findIndex(function(p) { return p.id === presetId; });
+    if (presetIndex === -1) return;
+
+    data.presets[presetIndex].files = files;
+    httpPut("/api/presets/" + presetId + "/files", { files: files }, function(err) {
+      if (!err) {
+        closeFileReorderModal();
+        renderPresetManager();
+        if (window.currentPresetId === presetId) loadTasks();
+      }
+    });
   });
 }
 
@@ -511,6 +865,139 @@ function initPage() {
   if (selectPreset) {
     selectPreset.onchange = onLoadPresetChange;
   }
+
+  var btnMoveUp = document.getElementById('btn-preset-up');
+  if (btnMoveUp) {
+    btnMoveUp.onclick = function() {
+      var select = document.getElementById('load-preset');
+      if (select && select.value) movePreset(select.value, -1);
+    };
+  }
+
+  var btnMoveDown = document.getElementById('btn-preset-down');
+  if (btnMoveDown) {
+    btnMoveDown.onclick = function() {
+      var select = document.getElementById('load-preset');
+      if (select && select.value) movePreset(select.value, 1);
+    };
+  }
+
+  var btnManage = document.getElementById('btn-preset-manage');
+  if (btnManage) {
+    btnManage.onclick = openManagePresetsModal;
+  }
+
+  var btnReorderFiles = document.getElementById('btn-reorder-files');
+  if (btnReorderFiles) {
+    btnReorderFiles.onclick = function() {
+      if (window.currentPresetId) {
+        httpGet("/api/presets", function(data) {
+          if (!data || !data.presets) return;
+          var preset = data.presets.find(function(p) { return p.id === window.currentPresetId; });
+          if (preset) openFileReorderModal(preset.id, preset.name);
+        });
+      }
+    };
+  }
+}
+
+function openManagePresetsModal() {
+  var modal = document.getElementById('preset-manager-modal');
+  if (modal) modal.style.display = 'flex';
+  renderPresetManager();
+}
+
+function closePresetManager() {
+  var modal = document.getElementById('preset-manager-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function renderPresetManager() {
+  httpGet("/api/presets", function(data) {
+    var list = document.getElementById('preset-manager-list');
+    if (!list) return;
+    list.innerHTML = '';
+    if (!data || !data.presets || data.presets.length === 0) {
+      list.innerHTML = '<div class="empty-state">Nenhum preset salvo</div>';
+      return;
+    }
+    var presets = data.presets.slice().sort(function(a, b) {
+      return (a.order || 0) - (b.order || 0);
+    });
+    presets.forEach(function(preset) {
+      var item = document.createElement('div');
+      item.className = 'preset-manager-item';
+      item.draggable = true;
+      item.dataset.id = preset.id;
+      item.innerHTML = '<span class="preset-drag-handle">&#9776;</span>' +
+        '<span class="preset-name">' + escapeHtml(preset.name) + '</span>' +
+        '<span class="preset-vault">Vault ' + (preset.vaultIndex || 0) + '</span>' +
+        '<button class="btn-small preset-delete" data-id="' + preset.id + '">Excluir</button>';
+      list.appendChild(item);
+    });
+    initPresetDragDrop();
+    initPresetDelete();
+  });
+}
+
+function initPresetDragDrop() {
+  var list = document.getElementById('preset-manager-list');
+  if (!list) return;
+  var items = list.querySelectorAll('.preset-manager-item');
+  var dragged = null;
+
+  items.forEach(function(item) {
+    item.addEventListener('dragstart', function(e) {
+      dragged = item;
+      item.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    item.addEventListener('dragend', function() {
+      item.classList.remove('dragging');
+      dragged = null;
+    });
+    item.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      if (dragged && dragged !== item) {
+        var rect = item.getBoundingClientRect();
+        var midY = rect.top + rect.height / 2;
+        if (e.clientY < midY) {
+          list.insertBefore(dragged, item);
+        } else {
+          list.insertBefore(dragged, item.nextSibling);
+        }
+      }
+    });
+  });
+}
+
+function initPresetDelete() {
+  var list = document.getElementById('preset-manager-list');
+  if (!list) return;
+  list.addEventListener('click', function(e) {
+    if (e.target.classList.contains('preset-delete')) {
+      var id = e.target.dataset.id;
+      if (confirm('Excluir preset?')) {
+        httpDelete("/api/presets/" + id, function(err) {
+          if (!err) renderPresetManager();
+        });
+      }
+    }
+  });
+}
+
+function savePresetOrder() {
+  var list = document.getElementById('preset-manager-list');
+  if (!list) return;
+  var items = list.querySelectorAll('.preset-manager-item');
+  var ids = Array.prototype.map.call(items, function(item) { return item.dataset.id; });
+  httpPut("/api/presets/reorder", { presetIds: ids }, function(err) {
+    if (!err) {
+      loadPresets();
+      closePresetManager();
+    }
+  });
 }
 
 window.onload = initPage;

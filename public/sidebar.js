@@ -66,6 +66,7 @@
   var sidebarClose = null;
   var sidebarBackdrop = null;
   var sidebarResizer = null;
+  var selectVault = null;
 
   var selectedFiles = [];
   var expandedFolders = new Set();
@@ -84,7 +85,7 @@
 
   var MAX_WIDTH = Math.min(window.innerWidth * 0.8, 320);
   var MIN_WIDTH = 200;
-
+  
   function httpGet(url, callback) {
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, true);
@@ -112,8 +113,31 @@
     };
 
     xhr.send();
+  }  
+  function loadVaults() {
+    httpGet('/vaults', function(vaults) {
+      if(vaults.length <= 0){
+        console.error("No vault returned")
+      }
+      if(!localStorage.getItem("selectedVault")){
+        localStorage.setItem("selectedVault", "0")
+      }
+      localStorage.setItem("vaults", JSON.stringify(vaults))
+      createVaultOptions();
+    });
   }
-
+  function createVaultOptions(){
+    var vaults = JSON.parse(localStorage.getItem("vaults"))
+    var select = document.getElementById('select-vault')
+    if (!select) return;
+    for(var i = 0; i < vaults.length; i++){
+      var option = document.createElement('option')
+      option.value = vaults[i].id;
+      option.text = vaults[i].name;
+      select.appendChild(option)
+    }
+    select.value = localStorage.getItem("selectedVault") || "0";
+  }
   function loadSidebar() {
     sidebar = document.getElementById('sidebar-placeholder');
     if (!sidebar) return;
@@ -130,6 +154,7 @@
       loadState();
       bindEvents();
       loadFileTree();
+      loadVaults();
     });
   }
 
@@ -143,7 +168,15 @@
     sidebarClose = document.getElementById('sidebar-close');
     sidebarBackdrop = document.getElementById('sidebar-backdrop');
     sidebarResizer = document.getElementById('sidebar-resizer');
+    selectVault = document.getElementById('select-vault');
 
+
+    if (selectVault) {
+      selectVault.addEventListener('change', function() {
+        localStorage.setItem('selectedVault', this.value);
+        loadFileTree();
+      });
+    }
     var savedWidth = localStorage.getItem(STORAGE_KEYS.WIDTH);
     if (savedWidth) {
       sidebar.style.width = Math.min(parseInt(savedWidth, 10), MAX_WIDTH) + 'px';
@@ -251,7 +284,7 @@
 
     folderTree.innerHTML = '<li class="loading-placeholder">Carregando...</li>';
 
-    httpGet('/api/files', function(data) {
+    httpGet('/api/files?vault='+localStorage.getItem('selectedVault'), function(data) {
       var tree = data.tree || [];
       if (tree.length === 0) {
         folderTree.innerHTML = '<li class="empty-state">Nenhum arquivo encontrado</li>';
@@ -432,25 +465,6 @@
     return text.replace(/[!"#$%&'()*+,./:;<=>?@[\\\]^`{|}~]/g, '\\$&');
   }
 
-  function loadSidebar() {
-    sidebar = document.getElementById('sidebar-placeholder');
-    if (!sidebar) return;
-
-    var style = document.createElement('link');
-    style.rel = 'stylesheet';
-    style.href = 'sidebar.css';
-    document.head.appendChild(style);
-
-    httpGet('sidebar.html', function(html) {
-      sidebar.innerHTML = html;
-      sidebar = document.getElementById('sidebar');
-      initSidebarElements();
-      loadState();
-      bindEvents();
-      loadFileTree();
-    });
-  }
-
   function initSidebar() {
     if (sidebar) {
       loadState();
@@ -460,8 +474,6 @@
       loadSidebar();
     }
   }
-
   window.initSidebar = initSidebar;
 
-  document.addEventListener('DOMContentLoaded', loadSidebar);
 })();

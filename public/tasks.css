@@ -218,3 +218,182 @@
     font-size: 24px;
   }
 }
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 20px;
+}
+
+.modal {
+  background: #1e1e1e;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 500px;
+  max-height: 80vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #333;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 18px;
+  color: #e6d9ff;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0 8px;
+  line-height: 1;
+}
+
+.modal-close:hover {
+  color: #fff;
+}
+
+.modal-body {
+  padding: 16px 20px;
+  overflow-y: auto;
+  max-height: 400px;
+}
+
+.preset-manager-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.preset-manager-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: #2a0a4e;
+  border-radius: 8px;
+  cursor: grab;
+  transition: background 0.2s;
+}
+
+.preset-manager-item:hover {
+  background: #3d1a6b;
+}
+
+.preset-manager-item.dragging {
+  opacity: 0.5;
+  background: #5b21b6;
+}
+
+.preset-drag-handle {
+  color: #888;
+  cursor: grab;
+  font-size: 18px;
+  user-select: none;
+}
+
+.preset-name {
+  flex: 1;
+  font-size: 14px;
+  color: #e6d9ff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.preset-vault {
+  font-size: 12px;
+  color: #888;
+  background: #1a0a2e;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.btn-small {
+  padding: 6px 12px;
+  font-size: 12px;
+  background: #7c3aed;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-small:hover {
+  background: #5b21b6;
+}
+
+.preset-delete {
+  background: #dc2626;
+}
+
+.preset-delete:hover {
+  background: #b91c1c;
+}
+
+.btn-move-up,
+.btn-move-down {
+  padding: 6px 10px;
+  font-size: 14px;
+  line-height: 1;
+  background: #4b5563;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  min-width: 32px;
+}
+
+.btn-move-up:active,
+.btn-move-down:active {
+  background: #374151;
+}
+
+.btn-move-up:disabled,
+.btn-move-down:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-move-up:focus,
+.btn-move-down:focus {
+  outline: 2px solid #8b5cf6;
+  outline-offset: 2px;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 16px 20px;
+  border-top: 1px solid #333;
+}
+
+.btn-secondary {
+  background: #374151;
+  color: #fff;
+}
+
+.btn-secondary:hover {
+  background: #4b5563;
+}

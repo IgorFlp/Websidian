@@ -40,35 +40,35 @@ app.use(
 );
 function CreateTask(content, task, line) {
   var newLine = "";
- 
+
   if(task.recurringRule == false){
         newLine = `- [ ] ${task.displayText} ${task.tags} ${task.recurring? `🔁 ${task.recurringRule}` : ""} ${task.due? `📅 ${task.due}` : ""} ${task.scheduled? `⏳ ${task.scheduled}` : ""}`.trim();
   }else{
     if(task.recurringRule.includes("every day")){
       let nextDate = new Date(task.due || task.scheduled);
-      nextDate.setDate(nextDate.getDate() + 1);      
+      nextDate.setDate(nextDate.getDate() + 1);
       task.scheduled = nextDate.toISOString().split("T")[0];
-      
+
       newLine = `- [ ] ${task.displayText } ${task.tags} 🔁 ${task.recurringRule} ${task.scheduled? `⏳ ${task.scheduled}` : ""}`.trim();
   }
   if(task.recurringRule.includes("every week")){
       let nextDate = new Date(task.due || task.scheduled);
-      nextDate.setDate(nextDate.getDate() + 7);      
-      task.scheduled = nextDate.toISOString().split("T")[0];      
+      nextDate.setDate(nextDate.getDate() + 7);
+      task.scheduled = nextDate.toISOString().split("T")[0];
       newLine = `- [ ] ${task.displayText } ${task.tags} 🔁 ${task.recurringRule} ${task.scheduled? `⏳ ${task.scheduled}` : ""}`.trim();
-  } 
+  }
   if(task.recurringRule.includes("days")){
       let nextDate = new Date(task.due || task.scheduled);
       var daysMatch = task.recurringRule.match(/every (\d+) days/);
       var daysInterval = daysMatch ? parseInt(daysMatch[1], 10) : 1;
-      nextDate.setDate(nextDate.getDate() + daysInterval);      
+      nextDate.setDate(nextDate.getDate() + daysInterval);
       task.scheduled = nextDate.toISOString().split("T")[0];
-      
+
       newLine = `- [ ] ${task.displayText } ${task.tags} 🔁 ${task.recurringRule} ${task.scheduled? `⏳ ${task.scheduled}` : ""}`.trim();
-  } 
+  }
  }
-  
-  content[line - 1]= newLine;
+
+  content.splice(line, 0, newLine);
   }
 
 //app.use(express.static(path.join(process.cwd(), "public"), requireAuth));
@@ -88,6 +88,17 @@ app.get("/tasks", authPage, (req, res) => {
 app.get("/login", (req, res) => {
   if (req.session.auth) return res.redirect("/");
   res.sendFile(path.join(process.cwd(), "public/login.html"));
+});
+app.get("/vaults", (req, res) => {
+  let vaults = process.env.VAULT_PATH
+  let v = vaults.split(',').map((v,index)=>{
+    return {
+      id: index,
+      name: v.split('\\').at(-1),
+      fullPath: v
+    }
+  })
+  res.send(v);
 });
 
 
@@ -166,6 +177,7 @@ app.get("/logout", (req, res) => {
 
 app.get("/api/files", authApi, (req, res) => {
   const flat = req.query.flat === "true";
+  const vaultIndex = req.query.vault != 'undefined'? req.query.vault : 0
   const ignoredDirs = new Set([
     "node_modules",
     ".git",
@@ -186,7 +198,7 @@ app.get("/api/files", authApi, (req, res) => {
       }
 
       const full = path.join(dir, entry.name);
-      const relPath = path.relative(VAULT, full);
+      const relPath = path.relative(VAULT.split(',').at(vaultIndex), full);
 
       if (entry.isDirectory()) {
         const children = buildTree(full);
@@ -216,7 +228,7 @@ app.get("/api/files", authApi, (req, res) => {
     return nodes;
   }
 
-  const tree = buildTree(VAULT);
+  const tree = buildTree(VAULT.split(',').at(vaultIndex));
 
   if (flat) {
     const files = [];
@@ -238,6 +250,7 @@ app.get("/api/files", authApi, (req, res) => {
 app.get("/api/tasks", authApi, (req, res) => {
   try {
     const tasks = [];
+    const vaultIndex = req.query.vault != 'undefined'? req.query.vault : 0
 
     function scan(dir) {
       fs.readdirSync(dir).forEach((file) => {
@@ -280,15 +293,14 @@ app.get("/api/tasks", authApi, (req, res) => {
             recurringRule: parsed.recurringRule || null,
 
             // info do arquivo
-            file: path.relative(VAULT, full),
+            file: path.relative(VAULT.split(',').at(vaultIndex), full),
             line: index,
           });
           // console.log(tasks);
         });
       });
-    }
-
-    scan(VAULT);
+    }    
+    scan(VAULT.split(',').at(vaultIndex));
     res.json(tasks);
   } catch (e) {
     console.error("Error scanning tasks:", e);
@@ -298,7 +310,7 @@ app.get("/api/tasks", authApi, (req, res) => {
 app.get("/api/file-content", authApi, (req, res) => {
   const relPath = req.query.path;
   const safePath = path.normalize(relPath).replace(/^(\.\.(\/|\\|$))+/, "");
-  const fullPath = path.join(VAULT, safePath);
+  const fullPath = path.join(VAULT.split(',').at(vaultIndex), safePath);
 
   if (!fs.existsSync(fullPath)) {
     return res.status(404).json({ error: "File not found" });
@@ -309,8 +321,8 @@ app.get("/api/file-content", authApi, (req, res) => {
   res.json({ content });
 });
 app.post("/api/tasks/toggle", authApi, (req, res) => {
-  const { file, line } = req.body;
-  const fullPath = path.join(VAULT, file);
+  const { file, line, vaultIndex } = req.body;
+  const fullPath = path.join(VAULT.split(',').at(vaultIndex), file);
   const content = fs.readFileSync(fullPath, "utf8").split("\n");
   content[line] = content[line].includes("[x]")
     ? content[line].replace("[x]", "[ ]")
@@ -319,7 +331,7 @@ app.post("/api/tasks/toggle", authApi, (req, res) => {
   if (content[line].includes("🔁")) {
     const task = parseTask(content[line]);
 
-    CreateTask(content, task, line);
+    CreateTask(content, task, content.length);
 
   }
   fs.writeFileSync(fullPath, content.join("\n"));
@@ -362,15 +374,18 @@ app.get("/api/presets", authApi, (req, res) => {
 });
 
 app.post("/api/presets", authApi, (req, res) => {
-  const { name, files } = req.body;
+  const { name, files, vaultIndex, order } = req.body;
   if (!name || !name.trim()) {
     return res.status(400).json({ error: "Name is required" });
   }
   const data = loadPresets();
+  const maxOrder = data.presets.length > 0 ? Math.max(...data.presets.map(p => p.order || 0)) : 0;
   const newPreset = {
     id: Date.now().toString(),
     name: name.trim(),
     files: files || [],
+    vaultIndex: vaultIndex !== undefined ? vaultIndex : 0,
+    order: order !== undefined ? order : maxOrder + 1,
     createdAt: new Date().toISOString(),
   };
   data.presets.push(newPreset);
@@ -390,12 +405,57 @@ app.delete("/api/presets/:id", authApi, (req, res) => {
   res.json({ ok: true });
 });
 
+app.put("/api/presets/:id", authApi, (req, res) => {
+  const { id } = req.params;
+  const { name, vaultIndex, order } = req.body;
+  const data = loadPresets();
+  const index = data.presets.findIndex((p) => p.id === id);
+  if (index === -1) {
+    return res.status(404).json({ error: "Preset not found" });
+  }
+  if (name !== undefined) data.presets[index].name = name.trim();
+  if (vaultIndex !== undefined) data.presets[index].vaultIndex = vaultIndex;
+  if (order !== undefined) data.presets[index].order = order;
+  savePresets(data.presets);
+  res.json({ preset: data.presets[index] });
+});
+
+app.put("/api/presets/reorder", authApi, (req, res) => {
+  const { presetIds } = req.body;
+  if (!Array.isArray(presetIds)) {
+    return res.status(400).json({ error: "presetIds array required" });
+  }
+  const data = loadPresets();
+  presetIds.forEach((id, index) => {
+    const preset = data.presets.find((p) => p.id === id);
+    if (preset) preset.order = index;
+  });
+  savePresets(data.presets);
+  res.json({ ok: true });
+});
+
+app.put("/api/presets/:id/files", authApi, (req, res) => {
+  const { id } = req.params;
+  const { files } = req.body;
+  if (!Array.isArray(files)) {
+    return res.status(400).json({ error: "files array required" });
+  }
+  const data = loadPresets();
+  const index = data.presets.findIndex((p) => p.id === id);
+  if (index === -1) {
+    return res.status(404).json({ error: "Preset not found" });
+  }
+  data.presets[index].files = files.map((f, i) => typeof f === 'string' ? { path: f, order: i } : { path: f.path, order: i !== undefined ? i : f.order });
+  savePresets(data.presets);
+  res.json({ preset: data.presets[index] });
+});
+
 app.get("/download", authApi, (req, res) => {
   const relPath = req.params[0];
   const safePath = path.normalize(relPath).replace(/^(\.\.(\/|\\|$))+/, "");
-  const fullPath = path.join(VAULT, safePath);
+  const fullPath = path.join(VAULT.split(',').at(vaultIndex), safePath);
 
-  if (!fullPath.startsWith(VAULT) || !fs.existsSync(fullPath)) {
+  if (!fullPath.startsWith(VAULT.split(',').at(vaultIndex) || !fs.existsSync(fullPath))) {
     return res.status(404).send("File not found");
   }
 
@@ -416,7 +476,7 @@ app.post("/api/newNote", authApi, (req, res) => {
   try{
   const { noteName, timestamp, text } = req.body;  
   const safeNoteName = noteName.replace(/[^a-zA-Z0-9-_ ]/g, "");
-  const fullPath = path.join(VAULT,'Dailynotes', `${safeNoteName}.md`);
+  const fullPath = path.join(VAULT.split(',').at(vaultIndex),'Dailynotes', `${safeNoteName}.md`);
   
   if (fs.existsSync(fullPath)) {
     let content = fs.readFileSync(fullPath, "utf8").split("\n");   

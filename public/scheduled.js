@@ -1,10 +1,16 @@
 window.onerror = function (msg, url, line) {
-  alert("JS ERROR:\n" + msg + "\nline: " + line);
+  safeLog("JS ERROR: " + msg + " at line " + line);
+  return true;
 };
 
 // Console polyfill for Android 4 stock browser
 if (typeof console === "undefined") {
   window.console = { log: function(){}, error: function(){}, warn: function(){} };
+}
+
+function safeLog(msg) {
+  try { console.log(msg); } catch (e) {}
+  // Avoid alert() on old Android - it can crash the browser
 }
 
 function httpGet(url, callback) {
@@ -28,18 +34,18 @@ function httpGet(url, callback) {
         var data = JSON.parse(xhr.responseText);
         callback(data);
       } catch (e) {
-        console.log("Error: ",e)
-        alert("Erro ao processar dados");
+        safeLog("Error: " + e);
+        safeLog("Erro ao processar dados");
       }
     } else {
-      console.log("HTTP Error: " + xhr.status + " for " + url);
-      alert("Erro de rede: " + xhr.status);
+      safeLog("HTTP Error: " + xhr.status + " for " + url);
+      safeLog("Erro de rede: " + xhr.status);
     }
   };
 
   xhr.onerror = function() {
-    console.log("Network error for " + url);
-    alert("Erro de conexão");
+    safeLog("Network error for " + url);
+    safeLog("Erro de conexão");
   };
 
   xhr.send();
@@ -105,63 +111,65 @@ function isThisMonth(dateStr) {
 }
 
 function viewHoje(task) {
-  try{
+  try {
     return (
       isToday(task.scheduled) ||
       isToday(task.due) ||
       (task.recurring && isToday(task.scheduled)) ||
       isToday(task.doneDate)
     );
-  }catch(e){
-    alert("Erro viewHoje: " + e.message);
+  } catch (e) {
+    safeLog("Erro viewHoje: " + e.message);
     return false;
   }
 }
 
 function viewSemanal(task) {
-  try{
-  if (task.tags.indexOf("daily") !== -1) return false;
+  try {
+    var tags = task.tags || [];
+    if (tags.indexOf("daily") !== -1) return false;
 
-  return (
-    isThisWeek(task.due) ||
-    isThisWeek(task.scheduled) ||
-    isThisWeek(task.doneDate) ||
-    (task.recurring && isThisWeek(task.scheduled))
-  );
-  }catch(e){
-    alert("Erro viewSemanal: " + e.message);
+    return (
+      isThisWeek(task.due) ||
+      isThisWeek(task.scheduled) ||
+      isThisWeek(task.doneDate) ||
+      (task.recurring && isThisWeek(task.scheduled))
+    );
+  } catch (e) {
+    safeLog("Erro viewSemanal: " + e.message);
     return false;
   }
-
 }
 
 function viewMensal(task) {
-  try{
-  return isThisMonth(task.scheduled) || isThisMonth(task.due) || isThisMonth(task.doneDate);
-    }catch(e){
-    alert("Erro viewMensal: " + e.message);
+  try {
+    return isThisMonth(task.scheduled) || isThisMonth(task.due) || isThisMonth(task.doneDate);
+  } catch (e) {
+    safeLog("Erro viewMensal: " + e.message);
     return false;
   }
 }
 
 function viewIndefinido(task) {
-  try{
-  if (task.done) return false;
-  if (task.tags.indexOf("goal") !== -1) return false;
-  if (task.tags.indexOf("subgoal") !== -1) return false;
-  if (task.due) return false;
-  if (task.scheduled) return false;
-  if (task.recurring) return false;
+  try {
+    if (task.done) return false;
+    var tags = task.tags || [];
+    if (tags.indexOf("goal") !== -1) return false;
+    if (tags.indexOf("subgoal") !== -1) return false;
+    if (task.due) return false;
+    if (task.scheduled) return false;
+    if (task.recurring) return false;
 
-  return true;
-  }catch(e){
-    alert("Erro viewIndefinido: " + e.message);
+    return true;
+  } catch (e) {
+    safeLog("Erro viewIndefinido: " + e.message);
     return false;
   }
 }
 
 function renderTasks(tasks, filterFn, ulId) {
   var ul = document.getElementById(ulId);
+  if (!ul) return;
   ul.innerHTML = "";
   var tasksFiltered = tasks.filter(filterFn);
   tasksFiltered.forEach(function (task) {
@@ -205,9 +213,9 @@ function renderTasks(tasks, filterFn, ulId) {
 }
 
 function loadTasks() {
-  httpGet("/api/tasks",function(tasks){
+  httpGet("/api/tasks?vault=" + localStorage.getItem("selectedVault"), function(tasks) {
     if (!Array.isArray(tasks)) {
-      alert("Resposta inválida do servidor: " + JSON.stringify(tasks));
+      safeLog("Resposta inválida do servidor: " + JSON.stringify(tasks));
       return;
     }
     try {
@@ -216,17 +224,20 @@ function loadTasks() {
       renderTasks(tasks, viewMensal, "tasks-mes");
       renderTasks(tasks, viewIndefinido, "tasks-indefinido");
     } catch (e) {
-      alert("Erro ao renderizar: " + e.message);
+      safeLog("Erro ao renderizar: " + e.message);
     }
     return true
   })
 }
 
 function toggleTask(task) {
+  var vaultIndex = localStorage.getItem("selectedVault");
+  var data = { file: task.file, line: task.line, vaultIndex: vaultIndex };
+  if (task.done !== undefined) data.done = task.done;
   var xhr = new XMLHttpRequest();
   xhr.open("POST", "/api/tasks/toggle", true);
   xhr.setRequestHeader("Content-Type", "application/json");
-  xhr.send(JSON.stringify(task));
+  xhr.send(JSON.stringify(data));
   xhr.onreadystatechange = function () {
     if (xhr.readyState === 4) loadTasks();
   };
