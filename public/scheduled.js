@@ -213,25 +213,103 @@ function renderTasks(tasks, filterFn, ulId) {
 }
 
 function loadTasks() {
-  httpGet("/api/tasks?vault=" + localStorage.getItem("selectedVault"), function(tasks) {
-    if (!Array.isArray(tasks)) {
-      safeLog("Resposta inválida do servidor: " + JSON.stringify(tasks));
+  httpGet("/vaults", function(vaults) {
+    if (!Array.isArray(vaults)) {
+      safeLog("Resposta inválida do servidor: " + JSON.stringify(vaults));
       return;
     }
-    try {
-      renderTasks(tasks, viewHoje, "tasks-hoje");
-      renderTasks(tasks, viewSemanal, "tasks-semanal");
-      renderTasks(tasks, viewMensal, "tasks-mes");
-      renderTasks(tasks, viewIndefinido, "tasks-indefinido");
-    } catch (e) {
-      safeLog("Erro ao renderizar: " + e.message);
-    }
-    return true
-  })
+    var totalVaults = vaults.length;
+    var loadedVaults = 0;
+    var allTasksByVault = {};
+
+    vaults.forEach(function(vault) {
+      httpGet("/api/tasks?vault=" + vault.id, function(tasks) {
+        if (!Array.isArray(tasks)) {
+          safeLog("Resposta inválida do servidor para vault " + vault.id + ": " + JSON.stringify(tasks));
+          tasks = [];
+        }
+        tasks.forEach(function(task) {
+          task.vaultName = vault.name;
+        });
+        allTasksByVault[vault.id] = tasks;
+        loadedVaults++;
+        if (loadedVaults === totalVaults) {
+          renderAllSections(allTasksByVault, vaults);
+        }
+      });
+    });
+  });
+}
+
+function renderAllSections(allTasksByVault, vaults) {
+  try {
+    renderSectionWithVaults(allTasksByVault, vaults, viewHoje, "tasks-hoje", "section-hoje");
+    renderSectionWithVaults(allTasksByVault, vaults, viewSemanal, "tasks-semanal", "section-semanal");
+    renderSectionWithVaults(allTasksByVault, vaults, viewMensal, "tasks-mes", "section-mes");
+    renderSectionWithVaults(allTasksByVault, vaults, viewIndefinido, "tasks-indefinido", "section-indefinido");
+  } catch (e) {
+    safeLog("Erro ao renderizar: " + e.message);
+  }
+}
+
+function renderSectionWithVaults(allTasksByVault, vaults, filterFn, ulId, sectionId) {
+  var ul = document.getElementById(ulId);
+  if (!ul) return;
+  ul.innerHTML = "";
+  var totalCount = 0;
+
+  vaults.forEach(function(vault) {
+    var tasks = allTasksByVault[vault.id] || [];
+    var filtered = tasks.filter(filterFn);
+    if (filtered.length === 0) return;
+
+    var divider = document.createElement("li");
+    divider.className = "vault-divider";
+    divider.textContent = vault.name;
+    ul.appendChild(divider);
+
+    filtered.forEach(function(task) {
+      var taskItem = document.createElement("li");
+      taskItem.className = "task-item";
+
+      var taskCard = document.createElement("label");
+      taskCard.className = "task-card";
+
+      var checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = task.done;
+
+      checkbox.onclick = function(e) {
+        e.stopPropagation();
+        toggleTask(task);
+      };
+
+      var fakebox = document.createElement("span");
+      fakebox.className = "obsidian-checkbox";
+      fakebox.for = checkbox;
+
+      var taskText = document.createElement("span");
+      taskText.className = "task-text";
+      taskText.appendChild(document.createTextNode(" " + task.text));
+
+      taskCard.appendChild(checkbox);
+      taskCard.appendChild(fakebox);
+      taskCard.appendChild(taskText);
+
+      taskItem.appendChild(taskCard);
+      ul.appendChild(taskItem);
+      totalCount++;
+    });
+  });
+
+  var countEl = document.querySelector("#" + sectionId + " .task-count");
+  if (countEl) {
+    countEl.textContent = totalCount + " tarefa" + (totalCount !== 1 ? "s" : "");
+  }
 }
 
 function toggleTask(task) {
-  var vaultIndex = localStorage.getItem("selectedVault");
+  var vaultIndex = task.vaultIndex !== undefined ? task.vaultIndex : localStorage.getItem("selectedVault");
   var data = { file: task.file, line: task.line, vaultIndex: vaultIndex };
   if (task.done !== undefined) data.done = task.done;
   var xhr = new XMLHttpRequest();

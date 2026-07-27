@@ -295,6 +295,7 @@ app.get("/api/tasks", authApi, (req, res) => {
             // info do arquivo
             file: path.relative(VAULT.split(',').at(vaultIndex), full),
             line: index,
+            vaultIndex: parseInt(vaultIndex),
           });
           // console.log(tasks);
         });

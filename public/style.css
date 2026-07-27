@@ -175,6 +175,16 @@ body {
   margin-top: 6px;
 }
 
+.vault-divider {
+  padding: 8px 12px 4px;
+  font-size: 14px;
+  font-weight: bold;
+  color: #cba3f7;
+  /*background: linear-gradient(90deg, transparent, rgba(192, 132, 255, 0.15));*/
+  border-left: 3px solid #7c3aed;  
+  border-radius: 0 4px 4px 0;
+}
+
 .task-card input[type="checkbox"] {
   display: none;
 }
