@@ -413,7 +413,7 @@
     if (selectedFiles.length === 0) return;
 
     localStorage.setItem(STORAGE_KEYS.TASK_FILTER_FILES, JSON.stringify(selectedFiles));
-    alert(selectedFiles.length + ' arquivo(s) adicionado(s) à visualização de tarefas');
+    window.location = "/tasks.html"
   }
 
   function updateToolbar() {
