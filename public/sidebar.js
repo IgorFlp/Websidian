@@ -63,6 +63,7 @@
   var btnOpenEditor = null;
   var btnClearSelection = null;
   var btnAddTaskView = null;
+  var btnDownload = null;
   var sidebarClose = null;
   var sidebarBackdrop = null;
   var sidebarResizer = null;
@@ -164,6 +165,7 @@
     selectionCount = document.getElementById('selection-count');
     btnOpenEditor = document.getElementById('btn-open-editor');
     btnAddTaskView = document.getElementById('btn-add-task-view');
+    btnDownload = document.getElementById('btn-download');
     btnClearSelection = document.getElementById('btn-clear-selection');
     sidebarClose = document.getElementById('sidebar-close');
     sidebarBackdrop = document.getElementById('sidebar-backdrop');
@@ -217,6 +219,7 @@
     btnClearSelection.addEventListener('click', clearSelection);
     btnOpenEditor.addEventListener('click', openInEditor);
     btnAddTaskView.addEventListener('click', addToTaskView);
+    btnDownload.addEventListener('click', downloadSelected);
 
     document.addEventListener('keydown', function(e) {
       if (e.key === 'Escape' && sidebar.classList.contains('open')) {
@@ -422,10 +425,12 @@
       selectionCount.textContent = selectedFiles.length + ' selecionado(s)';
       btnOpenEditor.disabled = false;
       btnAddTaskView.disabled = false;
+      btnDownload.disabled = false;
     } else {
       sidebarToolbar.style.display = 'none';
       btnOpenEditor.disabled = true;
       btnAddTaskView.disabled = true;
+      btnDownload.disabled = true;
     }
   }
 
@@ -436,6 +441,13 @@
 
   function openInEditorFromPath(path) {
     window.location.href = '/editor.html?path=' + encodeURIComponent(path);
+  }
+
+  function downloadSelected() {
+    if (selectedFiles.length === 0) return;
+    var vault = localStorage.getItem('selectedVault') || '0';
+    var path = selectedFiles[0];
+    window.location.href = '/download?path=' + encodeURIComponent(path) + '&vault=' + encodeURIComponent(vault);
   }
 
   function toggleFolder(li, path) {

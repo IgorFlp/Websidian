@@ -210,12 +210,12 @@ app.get("/api/files", authApi, (req, res) => {
             children,
           });
         }
-      } else if (entry.name.endsWith(".md")) {
+      } else if (entry.name.endsWith(".md") || entry.name.endsWith(".pdf")) {
         nodes.push({
           type: "file",
           name: entry.name,
           path: relPath,
-          extension: "md",
+          extension: path.extname(entry.name).slice(1),
         });
       }
     }
@@ -452,15 +452,18 @@ app.put("/api/presets/:id/files", authApi, (req, res) => {
 });
 
 app.get("/download", authApi, (req, res) => {
-  const relPath = req.params[0];
+  const relPath = req.query.path;
+  if (!relPath) {
+    return res.status(400).send("Missing path");
+  }
+  const vaultIndex = req.query.vault != "undefined" ? req.query.vault : 0;
+  const vaultPath = path.resolve(VAULT.split(",").at(vaultIndex));
   const safePath = path.normalize(relPath).replace(/^(\.\.(\/|\\|$))+/, "");
-  const fullPath = path.join(VAULT.split(',').at(vaultIndex), safePath);
+  const fullPath = path.join(vaultPath, safePath);
 
-  if (!fullPath.startsWith(VAULT.split(',').at(vaultIndex) || !fs.existsSync(fullPath))) {
+  if (!fullPath.startsWith(vaultPath) || !fs.existsSync(fullPath)) {
     return res.status(404).send("File not found");
   }
-
-  res.setHeader("Content-Type", "application/octet-stream");
 
   const fileName = path.basename(fullPath);
 
