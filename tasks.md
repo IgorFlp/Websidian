@@ -1,5 +1,5 @@
 - [ ] Criar aba Hermes no Websidian 📅 2026-10-02 ✅ 2026-10-02
-- [x] US01-T01 - Design da página (frontend) 📅 2026-10-02 ✅ 2026-10-02
+- [x] US01-T01 - Design da página (frontend) 📅 2026-10-01 ✅ 2026-10-01
     - [x] Esboçar wireframe simples da página de terminal (área  para saída, campo de entrada ou botão de envio, espaço para áudio) 
     - [x] Definir paleta de cores e tipografia seguindo as referências de design do Websidian 
     - [x] Elaborar documento de design (HTML + CSS básico) em formato Markdown ou .html para revisão 
