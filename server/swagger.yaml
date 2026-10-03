@@ -1,0 +1,900 @@
+openapi: "3.0.0"
+info:
+  title: "Websidian API"
+  version: "1.0.0"
+  description: "API documentation for Websidian - Obsidian vault management and Hermes terminal backend"
+  contact:
+    name: "API Support"
+servers:
+  - url: "http://localhost:9090"
+    description: "Development server"
+
+components:
+  securitySchemes:
+    sessionAuth:
+      type: "apiKey"
+      in: "cookie"
+      name: "connect.sid"
+      description: "Session-based authentication via cookie"
+  schemas:
+    Error:
+      type: "object"
+      properties:
+        error:
+          type: "string"
+    LoginRequest:
+      type: "object"
+      required: ["user", "pass"]
+      properties:
+        user:
+          type: "string"
+        pass:
+          type: "string"
+    Vault:
+      type: "object"
+      properties:
+        id:
+          type: "integer"
+        name:
+          type: "string"
+        fullPath:
+          type: "string"
+    FileNode:
+      type: "object"
+      properties:
+        type:
+          type: "string"
+          enum: ["folder", "file"]
+        name:
+          type: "string"
+        path:
+          type: "string"
+        extension:
+          type: "string"
+        children:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/FileNode"
+    ApiFilesResponse:
+      type: "object"
+      properties:
+        tree:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/FileNode"
+        files:
+          type: "array"
+          items:
+            type: "string"
+    Task:
+      type: "object"
+      properties:
+        text:
+          type: "string"
+        done:
+          type: "boolean"
+        due:
+          type: "string"
+          format: "date"
+          nullable: true
+        scheduled:
+          type: "string"
+          format: "date"
+          nullable: true
+        doneDate:
+          type: "string"
+          format: "date"
+          nullable: true
+        tags:
+          type: "array"
+          items:
+            type: "string"
+        recurring:
+          type: "boolean"
+        recurringRule:
+          type: "string"
+          nullable: true
+        file:
+          type: "string"
+        line:
+          type: "integer"
+        vaultIndex:
+          type: "integer"
+    FileContentResponse:
+      type: "object"
+      properties:
+        content:
+          type: "string"
+    TaskToggleRequest:
+      type: "object"
+      required: ["file", "line", "vaultIndex"]
+      properties:
+        file:
+          type: "string"
+        line:
+          type: "integer"
+        vaultIndex:
+          type: "integer"
+    TaskToggleResponse:
+      type: "object"
+      properties:
+        ok:
+          type: "boolean"
+    Preset:
+      type: "object"
+      properties:
+        id:
+          type: "string"
+        name:
+          type: "string"
+        files:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              path:
+                type: "string"
+              order:
+                type: "integer"
+        vaultIndex:
+          type: "integer"
+        order:
+          type: "integer"
+        createdAt:
+          type: "string"
+          format: "date-time"
+    PresetsResponse:
+      type: "object"
+      properties:
+        presets:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/Preset"
+    CreatePresetRequest:
+      type: "object"
+      required: ["name"]
+      properties:
+        name:
+          type: "string"
+        files:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              path:
+                type: "string"
+              order:
+                type: "integer"
+        vaultIndex:
+          type: "integer"
+        order:
+          type: "integer"
+    UpdatePresetRequest:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        vaultIndex:
+          type: "integer"
+        order:
+          type: "integer"
+    ReorderPresetsRequest:
+      type: "object"
+      required: ["presetIds"]
+      properties:
+        presetIds:
+          type: "array"
+          items:
+            type: "string"
+    PresetFilesRequest:
+      type: "object"
+      required: ["files"]
+      properties:
+        files:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              path:
+                type: "string"
+              order:
+                type: "integer"
+    NewNoteRequest:
+      type: "object"
+      required: ["noteName", "timestamp", "text"]
+      properties:
+        noteName:
+          type: "string"
+        timestamp:
+          type: "string"
+        text:
+          type: "string"
+    NewNoteResponse:
+      type: "object"
+      properties:
+        ok:
+          type: "string"
+    TerminalInputRequest:
+      type: "object"
+      required: ["type", "content"]
+      properties:
+        type:
+          type: "string"
+          enum: ["text"]
+        content:
+          type: "string"
+    TerminalInputResponse:
+      type: "object"
+      properties:
+        accepted:
+          type: "boolean"
+    TerminalPollResponse:
+      type: "object"
+      properties:
+        since:
+          type: "integer"
+          format: "int64"
+        html:
+          type: "string"
+        audio:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              id:
+                type: "string"
+              url:
+                type: "string"
+              text:
+                type: "string"
+    AudioFile:
+      type: "object"
+      properties:
+        id:
+          type: "string"
+        path:
+          type: "string"
+        text:
+          type: "string"
+        timestamp:
+          type: "integer"
+          format: "int64"
+        duration:
+          type: "integer"
+    ChatRequest:
+      type: "object"
+      required: ["input"]
+      properties:
+        input:
+          type: "string"
+        sessionId:
+          type: "string"
+    ChatResponse:
+      type: "object"
+      properties:
+        sessionId:
+          type: "string"
+        html:
+          type: "string"
+        audio:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              id:
+                type: "string"
+              url:
+                type: "string"
+              text:
+                type: "string"
+              duration:
+                type: "integer"
+    Session:
+      type: "object"
+      properties:
+        id:
+          type: "string"
+        title:
+          type: "string"
+        createdAt:
+          type: "string"
+          format: "date-time"
+    Profile:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        modelName:
+          type: "string"
+        endpoint:
+          type: "string"
+        isDefault:
+          type: "boolean"
+  security:
+    - sessionAuth: []
+
+tags:
+  - name: "Authentication"
+    description: "Login/logout endpoints"
+  - name: "Vaults"
+    description: "Vault management"
+  - name: "Files"
+    description: "File tree and content operations"
+  - name: "Tasks"
+    description: "Task scanning and management"
+  - name: "Presets"
+    description: "File preset collections"
+  - name: "Notes"
+    description: "Daily notes creation"
+  - name: "Chat"
+    description: "Hermes chat interaction"
+  - name: "Sessions"
+    description: "Chat session management"
+  - name: "Profiles"
+    description: "Hermes profiles"
+  - name: "Audio"
+    description: "TTS audio file serving"
+
+paths:
+  /login:
+    get:
+      summary: Get login page
+      tags: [Authentication]
+      responses:
+        "200":
+          description: Returns login HTML page
+        "302":
+          description: Redirects to home if already authenticated
+    post:
+      summary: Authenticate user
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "302":
+          description: Redirects to home on success, sets session cookie
+        "401":
+          description: Invalid credentials, redirects to login with error
+
+  /logout:
+    get:
+      summary: Logout user
+      tags: [Authentication]
+      security:
+        - sessionAuth: []
+      responses:
+        "302":
+          description: Destroys session and redirects to login
+
+  /vaults:
+    get:
+      summary: List configured vaults
+      tags: [Vaults]
+      responses:
+        "200":
+          description: Array of vault objects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Vault"
+
+  /api/files:
+    get:
+      summary: Get file tree or flat file list
+      tags: [Files]
+      security:
+        - sessionAuth: []
+      parameters:
+        - in: query
+          name: flat
+          schema:
+            type: boolean
+          description: "Return flat file list instead of tree"
+        - in: query
+          name: vault
+          schema:
+            type: integer
+          description: "Vault index (default 0)"
+      responses:
+        "200":
+          description: File tree or flat list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiFilesResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/tasks:
+    get:
+      summary: Scan and return all tasks from markdown files
+      tags: [Tasks]
+      security:
+        - sessionAuth: []
+      parameters:
+        - in: query
+          name: vault
+          schema:
+            type: integer
+          description: "Vault index (default 0)"
+      responses:
+        "200":
+          description: Array of task objects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Task"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          description: Error scanning tasks
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/file-content:
+    get:
+      summary: Get file content by path
+      tags: [Files]
+      security:
+        - sessionAuth: []
+      parameters:
+        - in: query
+          name: path
+          required: true
+          schema:
+            type: string
+          description: Relative path to file
+      responses:
+        "200":
+          description: File content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileContentResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: File not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/tasks/toggle:
+    post:
+      summary: Toggle task completion status
+      tags: [Tasks]
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskToggleRequest"
+      responses:
+        "200":
+          description: Task toggled successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskToggleResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/presets:
+    get:
+      summary: Get all presets
+      tags: [Presets]
+      security:
+        - sessionAuth: []
+      responses:
+        "200":
+          description: Presets object with array
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PresetsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      summary: Create a new preset
+      tags: [Presets]
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePresetRequest"
+      responses:
+        "201":
+          description: Preset created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  preset:
+                    $ref: "#/components/schemas/Preset"
+        "400":
+          description: Name is required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/presets/{id}:
+    delete:
+      summary: Delete a preset
+      tags: [Presets]
+      security:
+        - sessionAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Preset deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Preset not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      summary: Update a preset
+      tags: [Presets]
+      security:
+        - sessionAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePresetRequest"
+      responses:
+        "200":
+          description: Preset updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  preset:
+                    $ref: "#/components/schemas/Preset"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Preset not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/presets/reorder:
+    put:
+      summary: Reorder presets
+      tags: [Presets]
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReorderPresetsRequest"
+      responses:
+        "200":
+          description: Presets reordered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        "400":
+          description: presetIds array required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/presets/{id}/files:
+    put:
+      summary: Update preset files
+      tags: [Presets]
+      security:
+        - sessionAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PresetFilesRequest"
+      responses:
+        "200":
+          description: Preset files updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  preset:
+                    $ref: "#/components/schemas/Preset"
+        "400":
+          description: files array required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Preset not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /download:
+    get:
+      summary: Download a file from vault
+      tags: [Files]
+      security:
+        - sessionAuth: []
+      parameters:
+        - in: query
+          name: path
+          required: true
+          schema:
+            type: string
+          description: Relative path to file
+        - in: query
+          name: vault
+          schema:
+            type: integer
+          description: "Vault index (default 0)"
+      responses:
+        "200":
+          description: File download
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "400":
+          description: Missing path
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: File not found
+        "500":
+          description: Error processing download
+
+  /api/newNote:
+    post:
+      summary: Create or append to daily note
+      tags: [Notes]
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewNoteRequest"
+      responses:
+        "200":
+          description: Note created or appended
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewNoteResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          description: Error creating note
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /chat:
+    post:
+      summary: Send chat message to Hermes with audio generation
+      tags: [Chat]
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatRequest"
+      responses:
+        "200":
+          description: Chat response with HTML and audio
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatResponse"
+        "400":
+          description: Invalid payload
+        "404":
+          description: Session not found
+        "500":
+          description: Hermes API error
+
+  /sessions:
+    get:
+      summary: Get sessions list as HTML
+      tags: [Sessions]
+      security:
+        - sessionAuth: []
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 20
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: HTML session list
+          content:
+            text/html:
+              schema:
+                type: "string"
+    post:
+      summary: Create new session
+      tags: [Sessions]
+      security:
+        - sessionAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+      responses:
+        "201":
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+
+  /profiles:
+    get:
+      summary: Get available Hermes profiles
+      tags: [Profiles]
+      security:
+        - sessionAuth: []
+      responses:
+        "200":
+          description: Array of profiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Profile"
+
+  /audio/{id}:
+    get:
+      summary: Get audio file by ID with Range support
+      tags: [Audio]
+      security:
+        - sessionAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Audio file ID
+        - in: header
+          name: Range
+          schema:
+            type: string
+          description: Byte range for seeking (e.g., bytes=0-1023)
+      responses:
+        "200":
+          description: Audio file (full)
+          content:
+            audio/mpeg:
+              schema:
+                type: string
+                format: binary
+          headers:
+            Accept-Ranges:
+              schema:
+                type: string
+              description: bytes
+            Content-Length:
+              schema:
+                type: integer
+              description: File size in bytes
+            Content-Type:
+              schema:
+                type: string
+              description: audio/mpeg
+        "206":
+          description: Partial content (Range request)
+          content:
+            audio/mpeg:
+              schema:
+                type: string
+                format: binary
+          headers:
+            Content-Range:
+              schema:
+                type: string
+              description: bytes start-end/total
+            Accept-Ranges:
+              schema:
+                type: string
+              description: bytes
+            Content-Length:
+              schema:
+                type: integer
+              description: Chunk size in bytes
+            Content-Type:
+              schema:
+                type: string
+              description: audio/mpeg
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Audio not found or evicted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
