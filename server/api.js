@@ -4,13 +4,48 @@ import path from "path";
 import dotenv from "dotenv";
 import { fileURLToPath } from "url";
 import session from "express-session";
-
-dotenv.config();
-
-const app = express();
+import swaggerUi from "swagger-ui-express";
+import yaml from "yaml";
+import { getHermesClient } from "./src/hermes/HermesClient.js";
+import { ChatService } from "./src/chat/ChatService.js";
+import { SessionsService } from "./src/sessions/SessionsService.js";
+import { ProfilesService } from "./src/profiles/ProfilesService.js";
+import { audioFileManager } from "./src/audio/AudioFileManager.js";
+import { htmlRenderer } from "./src/html/HTMLRenderer.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.join(__dirname, "..", ".env") });
+
+const app = express();
+
+// Load Swagger spec from YAML file
+const swaggerFile = path.join(__dirname, "swagger.yaml");
+
+function loadSwaggerSpec() {
+  const content = fs.readFileSync(swaggerFile, "utf8");
+  console.log("[SWAGGER] Loaded file:", swaggerFile, "length:", content.length);
+  const spec = yaml.parse(content);
+  console.log("[SWAGGER] Paths found:", Object.keys(spec.paths).length, Object.keys(spec.paths));
+  return spec;
+}
+
+let swaggerSpec = loadSwaggerSpec();
+app.get("/swagger.json", (req, res) => {
+  console.log("[SWAGGER] /swagger.json hit");
+  const spec = loadSwaggerSpec();
+  res.setHeader("Content-Type", "application/json");
+  res.send(spec);
+});
+
+app.get("/test-swagger", (req, res) => {
+  console.log("[TEST] /test-swagger hit");
+  res.json({ ok: true });
+});
+
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
 const IGNORED_DIRS = [".obsidian", ".trash", ".git", "node_modules"];
 const VAULT = process.env.VAULT_PATH || "/vault";
 const PUBLIC = path.join(__dirname, "../public");
@@ -85,10 +120,38 @@ app.get("/scheduled", authPage, (req, res) => {
 app.get("/tasks", authPage, (req, res) => {
   res.sendFile(path.join(process.cwd(),"public/tasks.html"));
 });
+/**
+ * @swagger
+ * /login:
+ *   get:
+ *     summary: Get login page
+ *     tags: [Authentication]
+ *     responses:
+ *       200:
+ *         description: Returns login HTML page
+ *       302:
+ *         description: Redirects to home if already authenticated
+ */
 app.get("/login", (req, res) => {
   if (req.session.auth) return res.redirect("/");
   res.sendFile(path.join(process.cwd(), "public/login.html"));
 });
+/**
+ * @swagger
+ * /vaults:
+ *   get:
+ *     summary: List configured vaults
+ *     tags: [Vaults]
+ *     responses:
+ *       200:
+ *         description: Array of vault objects
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Vault'
+ */
 app.get("/vaults", (req, res) => {
   let vaults = process.env.VAULT_PATH
   let v = vaults.split(',').map((v,index)=>{
@@ -152,6 +215,24 @@ function parseTask(line) {
   return task;
 }
 
+/**
+ * @swagger
+ * /login:
+ *   post:
+ *     summary: Authenticate user
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/LoginRequest'
+ *     responses:
+ *       302:
+ *         description: Redirects to home on success, sets session cookie
+ *       401:
+ *         description: Invalid credentials, redirects to login with error
+ */
 app.post("/login", (req, res) => { 
   const { user, pass } = req.body;
   if (user === process.env.APP_USER && pass === process.env.APP_PASSWORD) {
@@ -162,6 +243,18 @@ app.post("/login", (req, res) => {
   res.redirect("/login?error=1");
 });
 
+/**
+ * @swagger
+ * /logout:
+ *   get:
+ *     summary: Logout user
+ *     tags: [Authentication]
+ *     security:
+ *       - sessionAuth: []
+ *     responses:
+ *       302:
+ *         description: Destroys session and redirects to login
+ */
 app.get("/logout", (req, res) => {
   req.session.destroy(() => {
     res.clearCookie("connect.sid");
@@ -175,6 +268,35 @@ app.get("/logout", (req, res) => {
  * @typedef {import('../shared-types/file-types').ApiFilesResponse} ApiFilesResponse
  */
 
+/**
+ * @swagger
+ * /api/files:
+ *   get:
+ *     summary: Get file tree or flat file list
+ *     tags: [Files]
+ *     security:
+ *       - sessionAuth: []
+ *     parameters:
+*       - in: query
+*         name: flat
+*         schema:
+*           type: boolean
+*         description: "Return flat file list instead of tree"
+*       - in: query
+*         name: vault
+*         schema:
+*           type: integer
+*         description: "Vault index (default 0)"
+ *     responses:
+ *       200:
+ *         description: File tree or flat list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiFilesResponse'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
 app.get("/api/files", authApi, (req, res) => {
   const flat = req.query.flat === "true";
   const vaultIndex = req.query.vault != 'undefined'? req.query.vault : 0
@@ -247,6 +369,38 @@ app.get("/api/files", authApi, (req, res) => {
     res.json({ tree });
   }
 });
+/**
+ * @swagger
+ * /api/tasks:
+ *   get:
+ *     summary: Scan and return all tasks from markdown files
+ *     tags: [Tasks]
+ *     security:
+ *       - sessionAuth: []
+*     parameters:
+*       - in: query
+*         name: vault
+*         schema:
+*           type: integer
+*         description: "Vault index (default 0)"
+ *     responses:
+ *       200:
+ *         description: Array of task objects
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Task'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         description: Error scanning tasks
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 app.get("/api/tasks", authApi, (req, res) => {
   try {
     const tasks = [];
@@ -308,6 +462,37 @@ app.get("/api/tasks", authApi, (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+/**
+ * @swagger
+ * /api/file-content:
+ *   get:
+ *     summary: Get file content by path
+ *     tags: [Files]
+ *     security:
+ *       - sessionAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Relative path to file
+ *     responses:
+ *       200:
+ *         description: File content
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/FileContentResponse'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       404:
+ *         description: File not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 app.get("/api/file-content", authApi, (req, res) => {
   const relPath = req.query.path;
   const safePath = path.normalize(relPath).replace(/^(\.\.(\/|\\|$))+/, "");
@@ -321,6 +506,30 @@ app.get("/api/file-content", authApi, (req, res) => {
 
   res.json({ content });
 });
+/**
+ * @swagger
+ * /api/tasks/toggle:
+ *   post:
+ *     summary: Toggle task completion status
+ *     tags: [Tasks]
+ *     security:
+ *       - sessionAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/TaskToggleRequest'
+ *     responses:
+ *       200:
+ *         description: Task toggled successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/TaskToggleResponse'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
 app.post("/api/tasks/toggle", authApi, (req, res) => {
   const { file, line, vaultIndex } = req.body;
   const fullPath = path.join(VAULT.split(',').at(vaultIndex), file);
@@ -369,11 +578,62 @@ function savePresets(presets) {
 }
 
 // Presets API endpoints
+/**
+ * @swagger
+ * /api/presets:
+ *   get:
+ *     summary: Get all presets
+ *     tags: [Presets]
+ *     security:
+ *       - sessionAuth: []
+ *     responses:
+ *       200:
+ *         description: Presets object with array
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PresetsResponse'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
 app.get("/api/presets", authApi, (req, res) => {
   const data = loadPresets();
   res.json(data);
 });
 
+/**
+ * @swagger
+ * /api/presets:
+ *   post:
+ *     summary: Create a new preset
+ *     tags: [Presets]
+ *     security:
+ *       - sessionAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CreatePresetRequest'
+ *     responses:
+ *       201:
+ *         description: Preset created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 preset:
+ *                   $ref: '#/components/schemas/Preset'
+ *       400:
+ *         description: Name is required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
 app.post("/api/presets", authApi, (req, res) => {
   const { name, files, vaultIndex, order } = req.body;
   if (!name || !name.trim()) {
@@ -394,6 +654,39 @@ app.post("/api/presets", authApi, (req, res) => {
   res.status(201).json({ preset: newPreset });
 });
 
+/**
+ * @swagger
+ * /api/presets/{id}:
+ *   delete:
+ *     summary: Delete a preset
+ *     tags: [Presets]
+ *     security:
+ *       - sessionAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Preset deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ok:
+ *                   type: boolean
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       404:
+ *         description: Preset not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 app.delete("/api/presets/:id", authApi, (req, res) => {
   const { id } = req.params;
   const data = loadPresets();
@@ -406,6 +699,45 @@ app.delete("/api/presets/:id", authApi, (req, res) => {
   res.json({ ok: true });
 });
 
+/**
+ * @swagger
+ * /api/presets/{id}:
+ *   put:
+ *     summary: Update a preset
+ *     tags: [Presets]
+ *     security:
+ *       - sessionAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdatePresetRequest'
+ *     responses:
+ *       200:
+ *         description: Preset updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 preset:
+ *                   $ref: '#/components/schemas/Preset'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       404:
+ *         description: Preset not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 app.put("/api/presets/:id", authApi, (req, res) => {
   const { id } = req.params;
   const { name, vaultIndex, order } = req.body;
@@ -421,6 +753,39 @@ app.put("/api/presets/:id", authApi, (req, res) => {
   res.json({ preset: data.presets[index] });
 });
 
+/**
+ * @swagger
+ * /api/presets/reorder:
+ *   put:
+ *     summary: Reorder presets
+ *     tags: [Presets]
+ *     security:
+ *       - sessionAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/ReorderPresetsRequest'
+ *     responses:
+ *       200:
+ *         description: Presets reordered
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ok:
+ *                   type: boolean
+ *       400:
+ *         description: presetIds array required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
 app.put("/api/presets/reorder", authApi, (req, res) => {
   const { presetIds } = req.body;
   if (!Array.isArray(presetIds)) {
@@ -435,6 +800,51 @@ app.put("/api/presets/reorder", authApi, (req, res) => {
   res.json({ ok: true });
 });
 
+/**
+ * @swagger
+ * /api/presets/{id}/files:
+ *   put:
+ *     summary: Update preset files
+ *     tags: [Presets]
+ *     security:
+ *       - sessionAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/PresetFilesRequest'
+ *     responses:
+ *       200:
+ *         description: Preset files updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 preset:
+ *                   $ref: '#/components/schemas/Preset'
+ *       400:
+ *         description: files array required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       404:
+ *         description: Preset not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 app.put("/api/presets/:id/files", authApi, (req, res) => {
   const { id } = req.params;
   const { files } = req.body;
@@ -451,6 +861,43 @@ app.put("/api/presets/:id/files", authApi, (req, res) => {
   res.json({ preset: data.presets[index] });
 });
 
+/**
+ * @swagger
+ * /download:
+ *   get:
+ *     summary: Download a file from vault
+ *     tags: [Files]
+ *     security:
+ *       - sessionAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Relative path to file
+*       - in: query
+*         name: vault
+*         schema:
+*           type: integer
+*         description: "Vault index (default 0)"
+ *     responses:
+ *       200:
+ *         description: File download
+ *         content:
+ *           application/octet-stream:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       400:
+ *         description: Missing path
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       404:
+ *         description: File not found
+ *       500:
+ *         description: Error processing download
+ */
 app.get("/download", authApi, (req, res) => {
   const relPath = req.query.path;
   if (!relPath) {
@@ -476,6 +923,36 @@ app.get("/download", authApi, (req, res) => {
     }
   });
 });
+/**
+ * @swagger
+ * /api/newNote:
+ *   post:
+ *     summary: Create or append to daily note
+ *     tags: [Notes]
+ *     security:
+ *       - sessionAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/NewNoteRequest'
+ *     responses:
+ *       200:
+ *         description: Note created or appended
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/NewNoteResponse'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         description: Error creating note
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 app.post("/api/newNote", authApi, (req, res) => {
   try{
   const { noteName, timestamp, text } = req.body;  
@@ -498,10 +975,556 @@ app.post("/api/newNote", authApi, (req, res) => {
 }
 });
 
+// ===== HERMES API ENDPOINTS =====
+
+// Request logging middleware for Hermes routes
+function logHermesRequest(req, res, next) {
+  const start = Date.now();
+  res.on("finish", () => {
+    const duration = Date.now() - start;
+    console.log(`[HERMES-API] ${req.method} ${req.path} ${res.statusCode} ${duration}ms`);
+  });
+  next();
+}
+
+/**
+ * @swagger
+ * /chat:
+ *   post:
+ *     summary: Send chat message to Hermes with audio generation
+ *     tags: [Chat]
+ *     security:
+ *       - sessionAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [input]
+ *             properties:
+ *               input:
+ *                 type: string
+ *               sessionId:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Chat response with HTML and audio
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 sessionId:
+ *                   type: string
+ *                 html:
+ *                   type: string
+ *                 audio:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       url:
+ *                         type: string
+ *                       text:
+ *                         type: string
+ *                       duration:
+ *                         type: integer
+ *       400:
+ *         description: Invalid payload
+ *       404:
+ *         description: Session not found
+ *       500:
+ *         description: Hermes API error
+ */
+app.post("/chat", authApi, logHermesRequest, express.json(), async (req, res) => {
+  try {
+    const { input, sessionId } = req.body;
+    
+    if (!input || typeof input !== "string") {
+      return res.status(400).json({ error: "Input is required and must be a string" });
+    }
+    
+    const result = await chatService.processChat(input, sessionId || null);
+    return res.json(result);
+  } catch (err) {
+    console.error("Chat error:", err);
+    if (err.status === 404) {
+      return res.status(404).json({ error: err.message });
+    }
+    return res.status(500).json({ error: err.message || "Internal server error" });
+  }
+});
+
+/**
+ * @swagger
+ * /sessions:
+ *   get:
+ *     summary: Get sessions list as HTML
+ *     tags: [Sessions]
+ *     security:
+ *       - sessionAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *     responses:
+ *       200:
+ *         description: HTML session list
+ *         content:
+ *           text/html:
+ *             schema:
+ *               type: string
+ */
+app.get("/sessions", authApi, logHermesRequest, async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit, 10) || 20;
+    const offset = parseInt(req.query.offset, 10) || 0;
+    const html = await sessionsService.getSessionsHTML(limit, offset);
+    res.setHeader("Content-Type", "text/html");
+    res.send(html);
+  } catch (err) {
+    console.error("Sessions list error:", err);
+    res.status(500).send("<div class='error'>Erro ao carregar sessões</div>");
+  }
+});
+
+/**
+ * @swagger
+ * /sessions:
+ *   post:
+ *     summary: Create new session
+ *     tags: [Sessions]
+ *     security:
+ *       - sessionAuth: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Session created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 sessionId:
+ *                   type: string
+ *                 title:
+ *                   type: string
+ *                 createdAt:
+ *                   type: integer
+ */
+app.post("/sessions", authApi, logHermesRequest, express.json(), async (req, res) => {
+  try {
+    const { title } = req.body;
+    const session = await sessionsService.createSession(title);
+    res.status(201).json(session);
+  } catch (err) {
+    console.error("Create session error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * @swagger
+ * /profiles:
+ *   get:
+ *     summary: Get available Hermes profiles
+ *     tags: [Profiles]
+ *     security:
+ *       - sessionAuth: []
+ *     responses:
+ *       200:
+ *         description: Array of profiles
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   name:
+ *                     type: string
+ *                   modelName:
+ *                     type: string
+ *                   endpoint:
+ *                     type: string
+ *                   isDefault:
+ *                     type: boolean
+ */
+app.get("/profiles", authApi, logHermesRequest, async (req, res) => {
+  try {
+    const profiles = await profilesService.getProfiles();
+    res.json(profiles);
+  } catch (err) {
+    console.error("Profiles error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ===== EXISTING AUDIO ENDPOINT (updated) =====
+
 // Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
+
+// Initialize Hermes API services
+let chatService;
+let sessionsService;
+let profilesService;
+
+async function initializeHermesServices() {
+  try {
+    const hermesClient = getHermesClient();
+    await hermesClient.initialize();
+    
+    chatService = new ChatService(audioFileManager, htmlRenderer);
+    sessionsService = new SessionsService(htmlRenderer);
+    profilesService = new ProfilesService();
+    
+    console.log("Hermes API services initialized");
+  } catch (err) {
+    console.error("Failed to initialize Hermes services:", err);
+  }
+}
+
+// Request logging middleware for terminal routes
+function logTerminalRequest(req, res, next) {
+  const start = Date.now();
+  res.on("finish", () => {
+    const duration = Date.now() - start;
+    console.log(`[TERMINAL] ${req.method} ${req.path} ${res.statusCode} ${duration}ms`);
+  });
+  next();
+}
+
+/**
+ * @swagger
+ * /terminal/input:
+ *   post:
+ *     summary: Send text input to terminal
+ *     tags: [Terminal]
+ *     security:
+ *       - sessionAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/TerminalInputRequest'
+ *     responses:
+ *       202:
+ *         description: Input accepted and forwarded to terminal
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/TerminalInputResponse'
+ *       400:
+ *         description: Invalid payload
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         description: Terminal error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+// POST /terminal/input - Send input to terminal
+app.post("/terminal/input", authApi, logTerminalRequest, express.json(), async (req, res) => {
+  try {
+    const { type, content } = req.body;
+    
+    if (!type || type !== "text") {
+      return res.status(400).json({ error: "Invalid payload: type must be 'text'" });
+    }
+    
+    if (typeof content !== "string") {
+      return res.status(400).json({ error: "Invalid payload: content must be a string" });
+    }
+    
+    terminalManager.write(content + "\n");
+    return res.status(202).json({ accepted: true });
+  } catch (err) {
+    console.error("Terminal input error:", err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * @swagger
+ * /terminal/poll:
+ *   get:
+ *     summary: Long-poll for terminal output since timestamp
+ *     tags: [Terminal]
+ *     security:
+ *       - sessionAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: since
+ *         required: true
+ *         schema:
+ *           type: integer
+ *           format: int64
+ *         description: Unix timestamp in milliseconds to get output since
+ *     responses:
+ *       200:
+ *         description: Terminal output with HTML and audio
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/TerminalPollResponse'
+ *       400:
+ *         description: Missing or invalid since parameter
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ */
+// GET /terminal/poll?since=<timestamp> - Long-poll for terminal output
+app.get("/terminal/poll", authApi, logTerminalRequest, async (req, res) => {
+  const sinceParam = req.query.since;
+  
+  if (!sinceParam) {
+    return res.status(400).json({ error: "Missing 'since' query parameter" });
+  }
+  
+  const since = parseInt(sinceParam, 10);
+  
+  if (isNaN(since)) {
+    return res.status(400).json({ error: "Invalid 'since' parameter: must be a Unix timestamp in milliseconds" });
+  }
+  
+  const timeoutMs = 30000;
+  const startTime = Date.now();
+  
+  const checkForNewOutput = async () => {
+    const newEntries = terminalManager.getBufferSince(since);
+    
+    if (newEntries.length > 0) {
+      // Parse blocks to identify AI messages
+      const blocks = htmlRenderer.parseBlocks(newEntries);
+      const audioMap = new Map();
+      const audioItems = [];
+      
+      // Generate TTS for new AI messages
+      for (const block of blocks) {
+        if (block.isAI) {
+          let audioInfo = audioFileManager.get(`block-${block.id}`);
+          
+          // Check if this AI block already has audio (by text content match)
+          const existingAudio = audioFileManager.getAll().find(a => a.text === block.text);
+          
+          if (!existingAudio) {
+            try {
+              console.log(`Generating TTS for AI response: ${block.text.substring(0, 50)}...`);
+              const audioFile = await ttsService.generateForText(block.text);
+              audioFileManager.add(audioFile);
+              audioInfo = audioFile;
+            } catch (err) {
+              console.error("TTS generation failed:", err.message);
+            }
+          } else {
+            audioInfo = existingAudio;
+          }
+          
+          if (audioInfo) {
+            audioMap.set(block.id, audioInfo);
+            audioItems.push({
+              id: audioInfo.id,
+              url: `/audio/${audioInfo.id}`,
+              text: audioInfo.text,
+            });
+          }
+        }
+      }
+      
+      // Render HTML with audio players
+      const renderedBlocks = htmlRenderer.renderMessageBlocks(newEntries, audioMap);
+      const html = renderedBlocks.join("\n");
+      
+      const newSince = newEntries[newEntries.length - 1].timestamp;
+      
+      return res.json({
+        since: newSince,
+        html,
+        audio: audioItems,
+      });
+    }
+    
+    if (Date.now() - startTime >= timeoutMs) {
+      return res.json({
+        since: Date.now(),
+        html: "",
+        audio: [],
+      });
+    }
+    
+    setTimeout(checkForNewOutput, 100);
+  };
+  
+  checkForNewOutput();
+});
+
+/**
+ * @swagger
+ * /audio/{id}:
+ *   get:
+ *     summary: Get audio file by ID with Range support
+ *     tags: [Audio]
+ *     security:
+ *       - sessionAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Audio file ID
+ *       - in: header
+ *         name: Range
+ *         schema:
+ *           type: string
+ *         description: Byte range for seeking (e.g., bytes=0-1023)
+ *     responses:
+ *       200:
+ *         description: Audio file (full)
+ *         content:
+ *           audio/mpeg:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *         headers:
+ *           Accept-Ranges:
+ *             schema:
+ *               type: string
+ *             description: bytes
+ *           Content-Length:
+ *             schema:
+ *               type: integer
+ *             description: File size in bytes
+ *           Content-Type:
+ *             schema:
+ *               type: string
+ *             description: audio/mpeg
+ *       206:
+ *         description: Partial content (Range request)
+ *         content:
+ *           audio/mpeg:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *         headers:
+ *           Content-Range:
+ *             schema:
+ *               type: string
+ *             description: bytes start-end/total
+ *           Accept-Ranges:
+ *             schema:
+ *               type: string
+ *             description: bytes
+ *           Content-Length:
+ *             schema:
+ *               type: integer
+ *             description: Chunk size in bytes
+ *           Content-Type:
+ *             schema:
+ *               type: string
+ *             description: audio/mpeg
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       404:
+ *         description: Audio not found or evicted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+// GET /audio/:id - Serve audio file with Range support
+app.get("/audio/:id", authApi, logHermesRequest, (req, res) => {
+  const { id } = req.params;
+  const audioFile = audioFileManager.get(id);
+  
+  if (!audioFile) {
+    return res.status(404).json({ error: "Audio not found" });
+  }
+  
+  const filePath = audioFile.path;
+  
+  if (!fs.existsSync(filePath)) {
+    audioFileManager.remove(id);
+    return res.status(404).json({ error: "Audio file not found" });
+  }
+  
+  const stat = fs.statSync(filePath);
+  const fileSize = stat.size;
+  const range = req.headers.range;
+  
+  if (range) {
+    const parts = range.replace(/bytes=/, "").split("-");
+    const start = parseInt(parts[0], 10);
+    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+    const chunkSize = end - start + 1;
+    
+    const file = fs.createReadStream(filePath, { start, end });
+    const head = {
+      "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+      "Accept-Ranges": "bytes",
+      "Content-Length": chunkSize,
+      "Content-Type": "audio/mpeg",
+    };
+    
+    res.writeHead(206, head);
+    file.pipe(res);
+  } else {
+    const head = {
+      "Content-Length": fileSize,
+      "Content-Type": "audio/mpeg",
+      "Accept-Ranges": "bytes",
+    };
+    
+    res.writeHead(200, head);
+    fs.createReadStream(filePath).pipe(res);
+  }
+});
+
+// Graceful shutdown
+process.on("SIGTERM", async () => {
+  console.log("SIGTERM received, shutting down gracefully...");
+  audioFileManager.clear();
+  process.exit(0);
+});
+
+process.on("SIGINT", async () => {
+  console.log("SIGINT received, shutting down gracefully...");
+  audioFileManager.clear();
+  process.exit(0);
+});
+
+// Start Hermes API services
+initializeHermesServices();
 
 app.listen(9090, "0.0.0.0", () =>
   console.log("Dashboard rodando na porta 9090"),
