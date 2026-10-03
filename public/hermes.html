@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Hermes Terminal</title>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts: Space Grotesk, Geist, JetBrains Mono -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&amp;family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;1,400&amp;family=Space+Grotesk:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS v3 -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "surface-container-low": "#1a1322",
+            "surface-container-highest": "#393240",
+            "surface-variant": "#393240",
+            "surface-tint": "#d0bcff",
+            "on-error": "#690005",
+            "surface-bright": "#3d3645",
+            "surface-dim": "#120d1a",
+            "on-background": "#eadff1",
+            "background": "#0d0914",
+            "on-primary-container": "#340080",
+            "tertiary-fixed-dim": "#c8c2e9",
+            "on-secondary-container": "#bea8ff",
+            "on-tertiary-fixed-variant": "#474363",
+            "on-surface": "#eadff1",
+            "tertiary-fixed": "#e5deff",
+            "inverse-on-surface": "#342e3c",
+            "primary-fixed-dim": "#d0bcff",
+            "on-primary-fixed": "#23005c",
+            "primary-fixed": "#e9ddff",
+            "on-secondary-fixed": "#21005e",
+            "inverse-primary": "#6d3bd7",
+            "on-secondary-fixed-variant": "#4f319c",
+            "surface-container-lowest": "#0a0710",
+            "on-primary-fixed-variant": "#5516be",
+            "surface-container": "#201828",
+            "inverse-surface": "#eadff1",
+            "on-error-container": "#ffdad6",
+            "secondary-fixed-dim": "#cebdff",
+            "error": "#ffb4ab",
+            "on-tertiary-fixed": "#1b1735",
+            "on-primary": "#3c0091",
+            "outline-variant": "#3e3749",
+            "on-secondary": "#381385",
+            "tertiary-container": "#928cb1",
+            "primary": "#d0bcff",
+            "outline": "#8a8296",
+            "primary-container": "#a078ff",
+            "tertiary": "#c8c2e9",
+            "surface": "#16111d",
+            "secondary-container": "#4f319c",
+            "surface-container-high": "#282032",
+            "on-surface-variant": "#cbc3d7",
+            "secondary": "#cebdff",
+            "on-tertiary": "#302c4b",
+            "error-container": "#93000a",
+            "on-tertiary-container": "#2a2644",
+            "secondary-fixed": "#e8ddff"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.125rem",
+            "lg": "0.375rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          "spacing": {
+            "space-xl": "2rem",
+            "gutter": "1rem",
+            "space-md": "1rem",
+            "space-xs": "0.25rem",
+            "gutter-lg": "1.5rem",
+            "space-lg": "1.5rem",
+            "margin-lg": "2rem",
+            "margin": "1rem",
+            "margin-md": "1.5rem",
+            "space-sm": "0.5rem"
+          },
+          "fontFamily": {
+            "headline-md": ["Space Grotesk"],
+            "headline-xl-mobile": ["Space Grotesk"],
+            "headline-xl": ["Space Grotesk"],
+            "body-md": ["Geist"],
+            "body-sm": ["Geist"],
+            "headline-lg": ["Space Grotesk"],
+            "label-sm": ["JetBrains Mono"],
+            "label-md": ["JetBrains Mono"],
+            "code-md": ["JetBrains Mono"],
+            "headline-lg-mobile": ["Space Grotesk"],
+            "code-lg": ["JetBrains Mono"],
+            "body-lg": ["Geist"]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-family: 'Material Symbols Outlined';
+      font-weight: normal;
+      font-style: normal;
+      font-size: 18px;
+      line-height: 1;
+      display: inline-block;
+      white-space: nowrap;
+      word-wrap: normal;
+      direction: ltr;
+      -webkit-font-feature-settings: 'liga';
+      -webkit-font-smoothing: antialiased;
+    }
+    
+    /* Custom Scrollbar for Terminal */
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #362e42;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #4f4460;
+    }
+</style>
+</head>
+<body class="bg-background text-on-surface antialiased font-body-md select-none min-h-screen flex items-center justify-center p-3 sm:p-6 lg:p-10">
+<!-- SINGLE CENTRALIZED TERMINAL WINDOW -->
+<div class="w-full max-w-4xl h-[92vh] sm:h-[88vh] max-h-[920px] bg-surface-container-low/95 backdrop-blur-xl border border-outline-variant/40 rounded-xl shadow-2xl shadow-black/70 flex flex-col overflow-hidden ring-1 ring-white/5">
+<!-- TERMINAL TITLE BAR -->
+<div class="h-11 bg-surface-container/90 px-4 border-b border-outline-variant/30 flex items-center justify-between select-none flex-shrink-0">
+<!-- Window Control Dots -->
+<div class="flex items-center gap-2">
+<div class="flex items-center gap-1.5 mr-2">
+<div class="w-2.5 h-2.5 rounded-full bg-error/70 border border-error/50"></div>
+<div class="w-2.5 h-2.5 rounded-full bg-secondary-fixed-dim/60 border border-secondary-fixed-dim/50"></div>
+<div class="w-2.5 h-2.5 rounded-full bg-primary/70 border border-primary/50"></div>
+</div>
+<!-- Terminal Title -->
+<span class="font-code-md text-code-md text-primary font-medium tracking-wide">hermes // terminal</span>
+<span class="text-outline text-xs">ttyS01</span>
+</div>
+<!-- Subtle Status Indicator -->
+<div class="flex items-center gap-2 text-label-sm font-label-sm text-outline">
+<span class="flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+<span class="text-primary font-code-md">ONLINE</span>
+</span>
+<span class="text-outline/40">•</span>
+<span class="font-code-md text-outline/80">42ms</span>
+</div>
+</div>
+<!-- TERMINAL STREAM (SCROLLABLE LOGS & CHAT) -->
+<div class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+<!-- BOOT / INIT BLOCK -->
+<div class="p-3.5 rounded-lg bg-surface-container-lowest/80 border border-outline-variant/20 font-code-md text-code-md text-outline space-y-1">
+<div class="flex items-center justify-between text-on-surface-variant font-label-sm pb-1 border-b border-outline-variant/20">
+<span class="text-primary font-medium">&gt;_ HERMES BOOT SEQUENCE</span>
+<span class="text-outline/70">INITIALIZATION COMPLETE [0.084s]</span>
+</div>
+<p class="text-on-surface-variant pt-1">[INIT] <span class="text-primary">hermes-core</span> v2.4.0-agentic carregado em <span class="text-secondary">/opt/hermes/runtime</span></p>
+<p class="text-on-surface-variant">[AUDIO] Engine Neural HQ TTS inicializado (buffer 48kHz / FP16 low-latency).</p>
+<p class="text-on-surface-variant">[STATUS] Reasoning Tree, SQL Sandbox, Code Execution Engine: <span class="text-primary font-semibold">PRONTOS</span></p>
+</div>
+<!-- OPERATOR COMMAND MESSAGE -->
+<div class="flex flex-col items-end space-y-1">
+<div class="flex items-center gap-2 text-label-sm font-label-sm text-outline mr-1">
+<span class="text-primary font-medium">OPERADOR // @dev_root</span>
+<span>•</span>
+<span>14:38:12</span>
+</div>
+<div class="max-w-2xl bg-surface-container-high/70 border border-outline-variant/40 rounded-lg p-3.5 text-on-surface font-body-md shadow-sm">
+<p>Execute a validação do pipeline de streaming de dados em <span class="font-code-md text-primary bg-surface-container-lowest px-1.5 py-0.5 rounded border border-outline-variant/30">data_pipeline.py</span>, capture eventuais gargalos de latência de agregação e sintetize um resumo por áudio.</p>
+</div>
+</div>
+<!-- AGENT HERMES RESPONSE -->
+<div class="flex flex-col space-y-2">
+<div class="flex items-center gap-2 text-label-sm font-label-sm">
+<div class="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(208,188,255,0.8)]"></div>
+<span class="font-code-md text-code-md font-semibold text-primary">HERMES CORE_AGENT</span>
+<span class="text-outline">•</span>
+<span class="px-1.5 py-0.2 rounded bg-surface-container-high text-primary border border-outline-variant/30 font-code-md">0.41s</span>
+</div>
+<div class="bg-surface-container-lowest/70 border-l-2 border-primary border-t border-r border-b border-outline-variant/30 rounded-r-lg rounded-bl-lg p-4 sm:p-5 space-y-4">
+<p class="text-on-surface font-body-md leading-relaxed">
+            Iniciei a execução isolada do script com telemetria detalhada de memory trace e buffers assíncronos. Os registros indicam que a ingestão processou <strong>14.200 eventos/segundo</strong> com oscilação insignificante na camada de compressão.
+          </p>
+<!-- CLI Output snippet -->
+<div class="rounded-md bg-surface-container-lowest border border-outline-variant/40 overflow-hidden font-code-md text-code-md">
+<div class="bg-surface-container-high/40 px-3 py-1.5 border-b border-outline-variant/30 flex items-center justify-between text-label-sm text-outline">
+<span class="text-on-surface-variant font-code-md">hermes exec data_pipeline.py --verbose</span>
+<span class="text-primary font-medium">EXIT: 0 (OK)</span>
+</div>
+<div class="p-3 space-y-1 text-on-surface-variant leading-5 text-sm">
+<p class="text-outline">$ python3 -m pipeline.runner --source=kafka-edge --workers=4</p>
+<p><span class="text-secondary">[STREAM]</span> Conexão com cluster broker estabilizada em 12ms.</p>
+<p><span class="text-primary">[BENCH]</span> Window Aggregation p95: 18.4ms | p99: 31.2ms (Delta: -6ms)</p>
+<p><span class="text-tertiary">[BUFFER]</span> Descarte nulo: 0 frames corrompidos. Memória alocada: 242MB.</p>
+<p class="text-primary font-semibold pt-1">&gt;&gt; Status: Pipeline pronto para commit de produção.</p>
+</div>
+</div>
+<!-- EMBEDDED TTS AUDIO PLAYER -->
+<div class="bg-surface-container-high/30 border border-outline-variant/30 rounded-lg p-2.5 sm:p-3 flex items-center justify-between gap-3">
+<div class="flex items-center gap-3">
+<button class="w-8 h-8 rounded-full bg-primary text-on-primary-container flex items-center justify-center hover:bg-surface-tint active:scale-95 transition-all shadow-[0_0_10px_rgba(208,188,255,0.35)] flex-shrink-0" title="Reproduzir Síntese Vocal">
+<span class="material-symbols-outlined text-[18px]" data-icon="play_arrow">play_arrow</span>
+</button>
+<div class="flex flex-col">
+<span class="font-code-md text-code-md text-primary font-medium text-xs sm:text-sm">Síntese Vocal Agêntica</span>
+<span class="font-label-sm text-label-sm text-outline text-[11px]">0:24 • Hermes Neural Voxtral</span>
+</div>
+</div>
+<!-- Waveform Indicator -->
+<div class="flex items-center gap-1 h-5 px-2 bg-surface-container-lowest/60 rounded border border-outline-variant/20">
+<span class="w-1 bg-primary/40 h-2 rounded-full"></span>
+<span class="w-1 bg-primary/70 h-3.5 rounded-full"></span>
+<span class="w-1 bg-primary h-4 rounded-full"></span>
+<span class="w-1 bg-primary h-2.5 rounded-full"></span>
+<span class="w-1 bg-primary h-4.5 rounded-full"></span>
+<span class="w-1 bg-primary/60 h-3 rounded-full"></span>
+<span class="w-1 bg-outline-variant h-2 rounded-full"></span>
+<span class="w-1 bg-outline-variant h-3.5 rounded-full"></span>
+<span class="w-1 bg-outline-variant h-1.5 rounded-full"></span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- TERMINAL INPUT DECK -->
+<div class="p-3 sm:p-4 bg-surface-container/70 border-t border-outline-variant/30 flex-shrink-0">
+<div class="flex items-center gap-2 bg-surface-container-lowest/90 rounded-lg border border-outline-variant/40 focus-within:border-primary/70 focus-within:shadow-[0_0_16px_rgba(208,188,255,0.15)] transition-all p-1.5">
+<!-- Terminal Prefix Prompt -->
+<div class="pl-2.5 flex items-center select-none">
+<span class="font-code-md text-code-md text-primary font-bold">&gt;</span>
+</div>
+<!-- Input Field -->
+<input class="flex-1 bg-transparent border-none text-on-surface placeholder:text-outline/60 font-code-md text-code-md focus:ring-0 focus:outline-none px-2 py-1 text-sm sm:text-base" placeholder="Digite um comando..." type="text" value="hermes audit --memory-drift --format=json"/>
+<!-- Mic Button -->
+<button class="p-1.5 rounded hover:bg-surface-container-high/60 text-outline hover:text-primary active:scale-95 transition-all" title="Entrada por Voz">
+<span class="material-symbols-outlined text-[18px]" data-icon="mic">mic</span>
+</button>
+<!-- Send / Return Button -->
+<button class="flex items-center justify-center p-1.5 sm:px-3 sm:py-1 rounded bg-primary text-on-primary-container font-label-sm text-label-sm font-semibold hover:bg-surface-tint active:scale-95 transition-all shadow-[0_0_10px_rgba(208,188,255,0.25)]">
+<span class="hidden sm:inline mr-1">Executar</span>
+<span class="material-symbols-outlined text-[16px]" data-icon="keyboard_return">keyboard_return</span>
+</button>
+</div>
+</div>
+</div>
+</body></html>

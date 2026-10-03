@@ -3,7 +3,7 @@
     - [x] Esboçar wireframe simples da página de terminal (área  para saída, campo de entrada ou botão de envio, espaço para áudio) 
     - [x] Definir paleta de cores e tipografia seguindo as referências de design do Websidian 
     - [x] Elaborar documento de design (HTML + CSS básico) em formato Markdown ou .html para revisão 
-- [ ] US01-T02 - Criação da spec do backend com OpenSpec 📅 2026-10-02
+- [x] US01-T02 - Criação da spec do backend com OpenSpec 📅 2026-10-02 ✅ 2026-10-02
 	/opsx-propose hermes-terminal-backend 
 	Crie um serviço que roda uma instancia de terminal com hermes agent, expondo endpoints para dar input de texto ou áudio, e que faça output do texto do terminal em um metodo Get que aceite polling do frontend.
 	O serviço de backend deve utilizar do hermes agente para criar arquivos de audio via TTS da resposta e enviar este áudio junto com a resposta de texto da IA apenas, não gerar áudios da mensagem de humanos.
