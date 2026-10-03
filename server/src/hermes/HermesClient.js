@@ -117,8 +117,83 @@ class HermesClient {
     throw new Error("No existing sessions found. Create one via Hermes dashboard first.");
   }
 
-  async chat(sessionId, input) {
-    return this.post(`/api/sessions/${sessionId}/chat`, { input });
+  async chat(sessionId, input, systemPrompt = null) {
+    const body = { input };
+    if (systemPrompt) body.system = systemPrompt;
+    return this.post(`/api/sessions/${sessionId}/chat`, body);
+  }
+
+  async chatStream(sessionId, input, systemPrompt = null, onChunk) {
+    const body = { input, stream: true };
+    if (systemPrompt) body.system = systemPrompt;
+
+    const url = `${this.baseUrl}/api/sessions/${sessionId}/chat`;
+    const headers = this.getHeaders();
+    const requestId = randomUUID().slice(0, 8);
+
+    let lastError;
+    for (let attempt = 1; attempt <= RETRY_ATTEMPTS; attempt++) {
+      try {
+        console.log(`[HERMES] ${requestId} POST ${url} (stream)`);
+
+        const response = await fetch(url, {
+          method: "POST",
+          headers,
+          body: JSON.stringify(body),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Hermes API error: ${response.status} ${response.statusText}`);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop();
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed) continue;
+            try {
+              const parsed = JSON.parse(trimmed);
+              if (onChunk) onChunk(parsed);
+            } catch {
+              if (onChunk) onChunk({ text: trimmed });
+            }
+          }
+        }
+
+        if (buffer.trim()) {
+          try {
+            const parsed = JSON.parse(buffer.trim());
+            if (onChunk) onChunk(parsed);
+          } catch {
+            if (onChunk) onChunk({ text: buffer.trim() });
+          }
+        }
+
+        return;
+      } catch (err) {
+        lastError = err;
+        console.error(`[HERMES] ${requestId} Stream attempt ${attempt} failed:`, err.message);
+        if (attempt < RETRY_ATTEMPTS) {
+          await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS * attempt));
+        }
+      }
+    }
+
+    throw lastError;
+  }
+
+  async getMessages(sessionId, limit = 10) {
+    return this.get(`/api/sessions/${sessionId}/messages?limit=${limit}`);
   }
 
   async getSessions(params = {}) {

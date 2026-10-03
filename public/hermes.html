@@ -36,7 +36,7 @@
         <span class="sessions-count" id="sessionsCount">0</span>
       </div>
       <div class="sessions-list" id="sessionsList">
-        <!-- Sessions injected here by SSR / JS -->
+        <!-- Sessions injected by JS -->
       </div>
     </div>
     <div class="sidebar-footer">
@@ -74,7 +74,6 @@
 
     <div class="terminal-stream" id="terminalStream">
       <div class="stream-content" id="streamContent">
-        <!-- Boot sequence injected by SSR -->
         <div class="boot-block" id="bootBlock">
           <div class="boot-header">
             <span class="boot-title">>_ HERMES BOOT SEQUENCE</span>
@@ -84,7 +83,6 @@
             <!-- Boot logs injected by SSR -->
           </div>
         </div>
-        <!-- Messages injected here by SSR / JS -->
       </div>
     </div>
 
@@ -92,9 +90,9 @@
       <div class="input-wrapper" id="inputWrapper">
         <div class="input-prefix" aria-hidden="true">></div>
         <input class="input-field" id="inputField" type="text" placeholder="Digite um comando..." autocomplete="off" spellcheck="false"/>
-        <button class="input-btn input-mic" id="btnMic" type="button" title="Entrada por Voz" data-icon="mic">&#128241;</button>
-        <button class="input-btn input-send" id="btnSend" type="button" title="Executar">
-          <span class="send-text">Executar</span>
+        <button class="input-btn input-mic" id="btnMic" type="button" title="Gravar &#211;udio" data-icon="mic">&#128241;</button>
+        <button class="input-btn input-send" id="btnSend" type="button" title="Enviar">
+          <span class="send-text">Enviar</span>
           <span class="send-icon" data-icon="keyboard_return">&#9166;</span>
         </button>
       </div>

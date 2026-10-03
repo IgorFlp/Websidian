@@ -1,20 +1,47 @@
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const PUBLIC_DIR = path.join(__dirname, "..", "..", "..", "public");
+const COMPONENTS_DIR = path.join(PUBLIC_DIR, "components");
+
+const aiTemplate = fs.readFileSync(
+  path.join(COMPONENTS_DIR, "AI-message-template.html"),
+  "utf8"
+);
+const humanTemplate = fs.readFileSync(
+  path.join(COMPONENTS_DIR, "Human-message-template.html"),
+  "utf8"
+);
+
 function escapeHtml(text) {
   if (!text) return "";
   const map = {
     "&": "&",
     "<": "<",
     ">": ">",
-    '"': '"',
+    '"': "&quot;",
     "'": "&#039;",
   };
   return text.replace(/[&<>"']/g, (char) => map[char]);
+}
+
+function fillTemplate(template, data) {
+  let html = template;
+  for (const [key, value] of Object.entries(data)) {
+    const placeholder = "{" + key + "}";
+    html = html.split(placeholder).join(escapeHtml(String(value ?? "")));
+  }
+  return html;
 }
 
 function formatElapsedTime(timestamp) {
   const now = Date.now();
   const diffMs = now - timestamp;
   const diffSec = Math.floor(diffMs / 1000);
-  
   if (diffSec < 60) return `${diffSec}s`;
   const diffMin = Math.floor(diffSec / 60);
   if (diffMin < 60) return `${diffMin}m ${diffSec % 60}s`;
@@ -22,15 +49,8 @@ function formatElapsedTime(timestamp) {
   return `${diffHour}h ${diffMin % 60}m`;
 }
 
-function renderWaveformBars() {
-  const bars = 8;
-  let html = '<div class="waveform">';
-  for (let i = 0; i < bars; i++) {
-    const height = 20 + Math.floor(Math.random() * 60);
-    html += `<div class="waveform-bar" style="height: ${height}%"></div>`;
-  }
-  html += '</div>';
-  return html;
+function uniqueId(prefix) {
+  return prefix + "-" + Math.random().toString(36).slice(2, 10);
 }
 
 export class HTMLRenderer {
@@ -42,41 +62,78 @@ export class HTMLRenderer {
     this.processStartTime = time;
   }
 
-  renderChatMessage({ id, isAI, text, timestamp, audio = null, isLastAI = false }) {
-    const agentIndicator = isAI ? "☤ Hermes" : "● User";
-    const agentClass = isAI ? "ai-message" : "user-message";
+  renderChatMessage({
+    id,
+    isAI,
+    text,
+    timestamp,
+    audio = null,
+    isLastAI = false,
+    reasoningText = null,
+    outputText = null,
+    ttsAudioPath = null,
+    responseTime = null,
+  }) {
     const elapsed = formatElapsedTime(timestamp);
-    const escapedText = escapeHtml(text);
     const messageId = id || `msg-${timestamp}`;
 
-    let audioPlayerHtml = "";
-    if (isAI && audio) {
-      const autoplayAttr = isLastAI ? ' autoplay' : '';
-      audioPlayerHtml = `
-        <div class="audio-player">
-          <button class="audio-play-btn" data-audio-id="${audio.id}"${autoplayAttr}>
-            <span class="material-icons">play_arrow</span>
-          </button>
-          <div class="audio-info">
-            <span class="audio-title">Síntese Vocal Agêntica</span>
-            <span class="audio-meta">${audio.duration}s • Hermes Neural Voxtral</span>
-          </div>
-          ${renderWaveformBars()}
-          <audio id="audio-${audio.id}" src="${audio.url}" preload="metadata"></audio>
-        </div>
-      `;
+    if (isAI) {
+      const displayText = outputText || text || "";
+      const brainBtnId = uniqueId("brainBtn");
+      const brainIconId = uniqueId("brainIcon");
+      const reasoningContainerId = uniqueId("reasoningContainer");
+
+      let html = aiTemplate;
+
+      html = html.split('{Agent Name}').join("HERMES");
+      html = html.split('{Response Time}s').join(
+        responseTime != null ? `${responseTime}s` : ""
+      );
+      html = html.split('{Reasoning text}').join(reasoningText || "");
+      html = html.split('{Output text}').join(displayText);
+      html = html.split('{CLI Command}').join("");
+      html = html.split('{Exit Status}').join("");
+      html = html.split('{Stream Label}').join("");
+      html = html.split('{Stream Message}').join("");
+      html = html.split('{Bench Label}').join("");
+      html = html.split('{Bench Value}').join("");
+      html = html.split('{Buffer Label}').join("");
+      html = html.split('{Buffer Message}').join("");
+      html = html.split('{Pipeline Status}').join("");
+      html = html.split('{TTS Button Title}').join("Reproduzir Síntese Vocal");
+      html = html.split('{TTS Audio Path}').join(ttsAudioPath || "");
+      html = html.split('{TTS Title}').join("Síntese Vocal Agêntica");
+      html = html.split('{TTS Subtitle}').join("Hermes Neural Voxtral");
+
+      html = html.split('id="brainBtn"').join(`id="${brainBtnId}"`);
+      html = html.split('id="brainIcon"').join(`id="${brainIconId}"`);
+      html = html.split('id="reasoningContainer"').join(
+        `id="${reasoningContainerId}"`
+      );
+
+      const script = `
+<script>
+document.getElementById('${brainBtnId}').addEventListener('click', function() {
+    var rc = document.getElementById('${reasoningContainerId}');
+    var icon = document.getElementById('${brainIconId}');
+    rc.classList.toggle('collapsed');
+    rc.classList.toggle('expanded');
+    icon.classList.toggle('expanded');
+});
+</script>`;
+
+      html = html.replace("</script>", "") + script;
+
+      return html;
     }
 
-    return `
-      <div class="message-block ${agentClass}" id="${messageId}" data-timestamp="${timestamp}" data-is-ai="${isAI}">
-        <div class="message-header">
-          <span class="agent-indicator">${escapeHtml(agentIndicator)}</span>
-          <span class="elapsed-time">${elapsed}</span>
-        </div>
-        <div class="message-body">${escapedText}</div>
-        ${audioPlayerHtml}
-      </div>
-    `;
+    const displayText = text || "";
+    let html = humanTemplate;
+    html = html.split("{User Name} // @{User Tag}").join("OPERADOR // @dev_root");
+    html = html.split("{Timestamp}").join(elapsed);
+    html = html.split("{User Message}").join(escapeHtml(displayText));
+
+    return html;
   }
 
   renderSessionsList(sessions, pagination = {}) {

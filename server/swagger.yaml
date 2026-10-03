@@ -289,6 +289,9 @@ components:
                 type: "string"
               duration:
                 type: "integer"
+        streaming:
+          type: "boolean"
+          description: "Whether streaming is still in progress"
     Session:
       type: "object"
       properties:
@@ -742,7 +745,8 @@ paths:
 
   /chat:
     post:
-      summary: Send chat message to Hermes with audio generation
+      summary: Send chat message to Hermes (streaming)
+      description: Starts a streaming chat session. Returns sessionId immediately. Frontend should poll GET /messages/{sessionId} for HTML updates.
       tags: [Chat]
       security:
         - sessionAuth: []
@@ -754,7 +758,7 @@ paths:
               $ref: "#/components/schemas/ChatRequest"
       responses:
         "200":
-          description: Chat response with HTML and audio
+          description: Chat started. Use sessionId to poll for HTML updates.
           content:
             application/json:
               schema:
@@ -765,6 +769,35 @@ paths:
           description: Session not found
         "500":
           description: Hermes API error
+
+  /messages/{sessionId}:
+    get:
+      summary: Poll for current chat HTML (streaming updates)
+      description: Frontend polls this endpoint every 500ms while streaming is active. Returns HTML content and X-Streaming header.
+      tags: [Chat]
+      security:
+        - sessionAuth: []
+      parameters:
+        - in: path
+          name: sessionId
+          required: true
+          schema:
+            type: "string"
+          description: Session ID returned from POST /chat
+      responses:
+        "200":
+          description: Current HTML content for the session
+          headers:
+            X-Streaming:
+              schema:
+                type: "string"
+              description: "Whether streaming is still in progress (true/false)"
+          content:
+            text/html:
+              schema:
+                type: "string"
+        "500":
+          description: Error loading messages
 
   /sessions:
     get:

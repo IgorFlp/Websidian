@@ -4,7 +4,7 @@
         <div class="ai-dot"></div>
         <span class="ai-label">{Agent Name}</span>
         <span>•</span>
-        <span class="ai-time">{Response Time}</span>
+        <span class="ai-time">{Response Time}s</span>
         <button class="ai-brain-btn reasoning-toggle" id="brainBtn" title="Toggle Reasoning">
             <span class="reasoning-toggle-icon" id="brainIcon">🧠</span>
         </button>
@@ -29,13 +29,10 @@
         </div>
         <div class="tts-player">
             <div class="flex items-center gap-3">
-                <button class="tts-play-btn" title="{TTS Button Title}">
+                <button src="{tts_audio_path}" class="tts-play-btn" title="{TTS Button Title}"
+                    data-tts-path="{TTS Audio Path}">
                     <span data-icon="play_arrow">▶</span>
                 </button>
-                <div class="tts-info">
-                    <span class="tts-title">{TTS Title}</span>
-                    <span class="tts-subtitle">{TTS Subtitle}</span>
-                </div>
             </div>
             <div class="tts-waveform">
                 <span class="tts-wave-bar"></span>
@@ -52,11 +49,11 @@
     </div>
 </div>
 <script>
-document.getElementById('brainBtn').addEventListener('click', function() {
-    var rc = document.getElementById('reasoningContainer');
-    var icon = document.getElementById('brainIcon');
-    rc.classList.toggle('collapsed');
-    rc.classList.toggle('expanded');
-    icon.classList.toggle('expanded');
-});
+    document.getElementById('brainBtn').addEventListener('click', function () {
+        var rc = document.getElementById('reasoningContainer');
+        var icon = document.getElementById('brainIcon');
+        rc.classList.toggle('collapsed');
+        rc.classList.toggle('expanded');
+        icon.classList.toggle('expanded');
+    });
 </script>

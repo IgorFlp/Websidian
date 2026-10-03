@@ -1,5 +1,6 @@
 import express from "express";
 import fs from "fs";
+import os from "os";
 import path from "path";
 import dotenv from "dotenv";
 import { fileURLToPath } from "url";
@@ -12,6 +13,7 @@ import { SessionsService } from "./src/sessions/SessionsService.js";
 import { ProfilesService } from "./src/profiles/ProfilesService.js";
 import { audioFileManager } from "./src/audio/AudioFileManager.js";
 import { htmlRenderer } from "./src/html/HTMLRenderer.js";
+import { htmlRepository } from "./src/html/HTMLRepository.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -991,7 +993,8 @@ function logHermesRequest(req, res, next) {
  * @swagger
  * /chat:
  *   post:
- *     summary: Send chat message to Hermes with audio generation
+ *     summary: Send chat message to Hermes (streaming)
+ *     description: Starts a streaming chat session. Returns sessionId immediately. Frontend should poll GET /messages/{sessionId} for HTML updates.
  *     tags: [Chat]
  *     security:
  *       - sessionAuth: []
@@ -1005,11 +1008,13 @@ function logHermesRequest(req, res, next) {
  *             properties:
  *               input:
  *                 type: string
+ *                 description: User message
  *               sessionId:
  *                 type: string
+ *                 description: Optional session ID
  *     responses:
  *       200:
- *         description: Chat response with HTML and audio
+ *         description: Chat started. Use sessionId to poll for HTML updates.
  *         content:
  *           application/json:
  *             schema:
@@ -1019,6 +1024,7 @@ function logHermesRequest(req, res, next) {
  *                   type: string
  *                 html:
  *                   type: string
+ *                   description: Current HTML snapshot
  *                 audio:
  *                   type: array
  *                   items:
@@ -1032,6 +1038,9 @@ function logHermesRequest(req, res, next) {
  *                         type: string
  *                       duration:
  *                         type: integer
+ *                 streaming:
+ *                   type: boolean
+ *                   description: Whether streaming is still in progress
  *       400:
  *         description: Invalid payload
  *       404:
@@ -1041,7 +1050,17 @@ function logHermesRequest(req, res, next) {
  */
 app.post("/chat", authApi, logHermesRequest, express.json(), async (req, res) => {
   try {
-    const { input, sessionId } = req.body;
+    const { input, sessionId, audio } = req.body;
+    
+    if (audio) {
+      const audioBuffer = Buffer.from(audio, "base64");
+      const tempDir = path.join(os.tmpdir(), "hermes-audio-uploads");
+      if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+      const tempPath = path.join(tempDir, `audio_${Date.now()}.webm`);
+      fs.writeFileSync(tempPath, audioBuffer);
+      const result = await chatService.processChat(tempPath, sessionId || null);
+      return res.json(result);
+    }
     
     if (!input || typeof input !== "string") {
       return res.status(400).json({ error: "Input is required and must be a string" });
@@ -1055,6 +1074,51 @@ app.post("/chat", authApi, logHermesRequest, express.json(), async (req, res) =>
       return res.status(404).json({ error: err.message });
     }
     return res.status(500).json({ error: err.message || "Internal server error" });
+  }
+});
+
+/**
+ * @swagger
+ * /messages/{sessionId}:
+ *   get:
+ *     summary: Poll for current chat HTML (streaming updates)
+ *     description: Frontend polls this endpoint every 500ms while streaming is active. Returns HTML content and X-Streaming header.
+ *     tags: [Chat]
+ *     security:
+ *       - sessionAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: sessionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Session ID returned from POST /chat
+ *     responses:
+ *       200:
+ *         description: Current HTML content for the session
+ *         headers:
+ *           X-Streaming:
+ *             description: Whether streaming is still in progress (true/false)
+ *             schema:
+ *               type: string
+ *         content:
+ *           text/html:
+ *             schema:
+ *               type: string
+ *       500:
+ *         description: Error loading messages
+ */
+app.get("/messages/:sessionId", authApi, logHermesRequest, async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const html = chatService.getMessagesHtml(sessionId, htmlRenderer);
+    const streaming = htmlRepository.isStreaming(sessionId);
+    res.setHeader("Content-Type", "text/html");
+    res.setHeader("X-Streaming", streaming ? "true" : "false");
+    res.send(html || "<div class='message-block'><div class='message-body'>Sem mensagens ainda.</div></div>");
+  } catch (err) {
+    console.error("Get messages error:", err);
+    res.status(500).send("<div class='error'>Erro ao carregar mensagens</div>");
   }
 });
 
