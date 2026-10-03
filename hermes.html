@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Hermes Terminal</title>
+<link rel="stylesheet" href="hermes.css"/>
+</head>
+<body>
+<div class="app-container">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-title-row">
+        <span class="sidebar-title">Ambiente Operacional</span>
+        <span class="status-dot" aria-label="Online"></span>
+      </div>
+      <div class="profile-selector" id="profileSelector">
+        <div class="profile-info">
+          <div class="profile-avatar" id="profileAvatar">DR</div>
+          <div class="profile-details">
+            <span class="profile-name" id="profileName">dev_root // admin</span>
+            <span class="profile-mode" id="profileMode">Agentic Mode (Full Acc)</span>
+          </div>
+        </div>
+        <span class="profile-chevron" data-icon="unfold_more">&#9660;</span>
+      </div>
+      <button class="btn-new-session" id="btnNewSession" type="button">
+        <span class="btn-icon" data-icon="add">+</span>
+        <span class="btn-text">Nova Sess&#227;o</span>
+        <span class="btn-shortcut">&#8984;N</span>
+      </button>
+    </div>
+    <div class="sessions-container" id="sessionsContainer">
+      <div class="sessions-header">
+        <span class="sessions-label">Sess&#245;es Ativas</span>
+        <span class="sessions-count" id="sessionsCount">0</span>
+      </div>
+      <div class="sessions-list" id="sessionsList">
+        <!-- Sessions injected here by SSR / JS -->
+      </div>
+    </div>
+    <div class="sidebar-footer">
+      <div class="version-info">
+        <span class="version-dot" aria-label="Version"></span>
+        <span class="version-text" id="versionText">v2.4.0-agentic</span>
+      </div>
+      <div class="footer-actions">
+        <button class="icon-btn" id="btnSettings" type="button" title="Configura&#231;&#245;es R&#225;pidas" data-icon="settings">&#9881;</button>
+        <button class="icon-btn" id="btnHelp" type="button" title="Ajuda e Documenta&#231;&#227;o" data-icon="help">?</button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main-content" id="mainContent">
+    <header class="terminal-header">
+      <div class="window-controls">
+        <div class="control-dot control-close" aria-label="Fechar"></div>
+        <div class="control-dot control-minimize" aria-label="Minimizar"></div>
+        <div class="control-dot control-maximize" aria-label="Maximizar"></div>
+      </div>
+      <div class="terminal-title">
+        <span class="title-main">hermes // terminal</span>
+        <span class="title-tty">ttyS01</span>
+      </div>
+      <div class="terminal-status">
+        <span class="status-indicator">
+          <span class="status-pulse" aria-label="Online"></span>
+          <span class="status-text">ONLINE</span>
+        </span>
+        <span class="status-separator">&#8226;</span>
+        <span class="status-latency" id="statusLatency">42ms</span>
+      </div>
+    </header>
+
+    <div class="terminal-stream" id="terminalStream">
+      <div class="stream-content" id="streamContent">
+        <!-- Boot sequence injected by SSR -->
+        <div class="boot-block" id="bootBlock">
+          <div class="boot-header">
+            <span class="boot-title">>_ HERMES BOOT SEQUENCE</span>
+            <span class="boot-time" id="bootTime">INITIALIZATION COMPLETE [0.084s]</span>
+          </div>
+          <div class="boot-logs" id="bootLogs">
+            <!-- Boot logs injected by SSR -->
+          </div>
+        </div>
+        <!-- Messages injected here by SSR / JS -->
+      </div>
+    </div>
+
+    <footer class="terminal-input-deck" id="inputDeck">
+      <div class="input-wrapper" id="inputWrapper">
+        <div class="input-prefix" aria-hidden="true">></div>
+        <input class="input-field" id="inputField" type="text" placeholder="Digite um comando..." autocomplete="off" spellcheck="false"/>
+        <button class="input-btn input-mic" id="btnMic" type="button" title="Entrada por Voz" data-icon="mic">&#128241;</button>
+        <button class="input-btn input-send" id="btnSend" type="button" title="Executar">
+          <span class="send-text">Executar</span>
+          <span class="send-icon" data-icon="keyboard_return">&#9166;</span>
+        </button>
+      </div>
+    </footer>
+  </main>
+</div>
+
+<script src="hermes.js"></script>
+</body>
+</html>
