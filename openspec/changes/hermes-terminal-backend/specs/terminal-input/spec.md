@@ -1,21 +1,29 @@
 ## ADDED Requirements
 
-### Requirement: Text input endpoint
-The system SHALL accept text input via POST /terminal/input and forward it to the terminal process.
+### Requirement: Sessions list endpoint with HTML rendering
+The system SHALL provide GET /sessions endpoint that proxies to Hermes `/api/sessions` and returns server-rendered HTML.
 
-#### Scenario: Text input forwarded
-- **WHEN** client POSTs `{ "type": "text", "content": "hello" }` to /terminal/input
-- **THEN** "hello\n" is written to terminal stdin
-- **THEN** response returns 202 Accepted
+#### Scenario: Sessions list returned
+- **WHEN** client GETs /sessions
+- **THEN** system calls Hermes `/api/sessions` with pagination params (limit, offset)
+- **THEN** response is HTML fragment containing session list
+- **THEN** each session shows: title, last activity, message count, session ID
 
-#### Scenario: Invalid payload rejected
-- **WHEN** client POSTs invalid JSON or missing fields
-- **THEN** response returns 400 Bad Request with error details
+#### Scenario: Pagination support
+- **WHEN** client provides `?limit=20&offset=0` query params
+- **THEN** params forwarded to Hermes API
+- **THEN** HTML includes pagination controls if more sessions exist
 
-### Requirement: Audio input endpoint (future)
-The system SHALL accept audio input via POST /terminal/input for future STT processing.
+#### Scenario: Session list HTML structure
+- **WHEN** rendering session list
+- **THEN** output is `<ul class="session-list">` with `<li class="session-item">` elements
+- **THEN** each item has data-session-id attribute for client-side interaction
+- **THEN** includes "New Session" button/link at top
 
-#### Scenario: Audio input accepted
-- **WHEN** client POSTs multipart/form-data with audio file
-- **THEN** audio is queued for STT processing (not implemented in v1)
-- **THEN** response returns 202 Accepted
+### Requirement: Session creation endpoint
+The system SHALL provide POST /sessions endpoint to create new empty sessions.
+
+#### Scenario: New session created
+- **WHEN** client POSTs `/sessions` with optional `{ "title": "My Chat" }`
+- **THEN** system calls Hermes `/api/sessions` (POST)
+- **THEN** returns created session metadata with sessionId

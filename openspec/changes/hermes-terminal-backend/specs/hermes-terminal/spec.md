@@ -1,27 +1,22 @@
 ## ADDED Requirements
 
-### Requirement: Terminal process spawning
-The system SHALL spawn a persistent terminal process running the Hermes agent on service startup.
+### Requirement: Hermes API client initialization
+The system SHALL initialize a Hermes API client with base URL and bearer token authentication on service startup.
 
-#### Scenario: Successful spawn
+#### Scenario: Client configured
 - **WHEN** service starts
-- **THEN** a pseudo-terminal is created with Hermes agent process running inside
+- **THEN** client is configured with `HERMES_API_URL` (default: http://localhost:8642) and `HERMES_API_KEY`
+- **THEN** client includes bearer auth header on all requests
 
-#### Scenario: Process restart on crash
-- **WHEN** Hermes agent process exits unexpectedly
-- **THEN** system restarts the process with exponential backoff (max 5 retries)
+#### Scenario: Health check
+- **WHEN** service starts
+- **THEN** client verifies Hermes API server is reachable via `/health` endpoint
+- **THEN** service fails fast if Hermes API server is unavailable
 
-#### Scenario: Graceful shutdown
-- **WHEN** service receives shutdown signal
-- **THEN** terminal process is terminated gracefully before exit
+### Requirement: Multi-profile routing discovery
+The system SHALL discover available Hermes profiles via multi-profile routing.
 
-### Requirement: Terminal output capture
-The system SHALL capture all stdout/stderr from the terminal process in real-time.
-
-#### Scenario: Output buffering
-- **WHEN** terminal produces output
-- **THEN** output is appended to an in-memory buffer with timestamps
-
-#### Scenario: Buffer size limit
-- **WHEN** buffer exceeds 10,000 lines
-- **THEN** oldest lines are evicted (FIFO) to maintain memory bounds
+#### Scenario: Profile list retrieved
+- **WHEN** client queries profile discovery
+- **THEN** system returns list of profiles with their names and API endpoint prefixes
+- **THEN** each profile includes its own bearer token for authentication

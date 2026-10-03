@@ -5,7 +5,7 @@ The system SHALL store generated audio files in OS temp directory and maintain o
 
 #### Scenario: File added to storage
 - **WHEN** new AI audio is generated
-- **THEN** file saved to `{tmpdir}/hermes-terminal-{id}.mp3`
+- **THEN** file saved to `{tmpdir}/hermes-api-{id}.mp3`
 - **THEN** entry added to in-memory index with metadata
 
 #### Scenario: FIFO eviction on limit
@@ -15,7 +15,7 @@ The system SHALL store generated audio files in OS temp directory and maintain o
 
 #### Scenario: Startup cleanup
 - **WHEN** service starts
-- **THEN** orphaned `hermes-terminal-*.mp3` files in temp dir are deleted
+- **THEN** orphaned `hermes-api-*.mp3` files in temp dir are deleted
 
 ### Requirement: Audio serving endpoint
 The system SHALL serve audio files via GET /audio/:id.
