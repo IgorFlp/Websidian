@@ -1,17 +1,40 @@
 import fs from "fs";
 import path from "path";
 import os from "os";
+import { fileURLToPath } from "url";
 import { randomUUID } from "crypto";
 import { spawn } from "child_process";
 import ffprobeStatic from "ffprobe-static";
 
-const MANAGED_TEMP_DIR = path.join(os.tmpdir(), "hermes-api-audio");
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const PUBLIC_DIR = path.join(__dirname, "..", "..", "..", "public");
+const AUDIOS_DIR = path.join(PUBLIC_DIR, "audios");
 const MAX_ENTRIES = parseInt(process.env.AUDIO_MAX_ENTRIES || "10", 10);
-const HERMES_TEMP_PATTERN = /^hermes-api-.*\.mp3$/;
+const HERMES_TEMP_PATTERN = /^hermes-api-.*\.(mp3|wav|webm|ogg)$/;
 
 function ensureManagedTempDir() {
-  if (!fs.existsSync(MANAGED_TEMP_DIR)) {
-    fs.mkdirSync(MANAGED_TEMP_DIR, { recursive: true });
+  if (!fs.existsSync(AUDIOS_DIR)) {
+    fs.mkdirSync(AUDIOS_DIR, { recursive: true });
+  }
+}
+
+function cleanupAudiosDir() {
+  try {
+    const files = fs.readdirSync(AUDIOS_DIR);
+    for (const file of files) {
+      if (HERMES_TEMP_PATTERN.test(file)) {
+        try {
+          fs.unlinkSync(path.join(AUDIOS_DIR, file));
+        } catch (err) {
+          console.warn(`[AUDIO] Failed to clean ${file}:`, err.message);
+        }
+      }
+    }
+    console.log("[AUDIO] Cleaned audios directory on startup");
+  } catch (err) {
+    console.warn("[AUDIO] Failed to clean audios directory:", err.message);
   }
 }
 
@@ -72,6 +95,7 @@ export class AudioFileManager {
   constructor() {
     this.index = [];
     ensureManagedTempDir();
+    cleanupAudiosDir();
     cleanupOrphanedHermesFiles();
   }
 
@@ -81,8 +105,9 @@ export class AudioFileManager {
     }
 
     const id = randomUUID().slice(0, 8);
-    const managedFileName = `hermes-api-${id}.mp3`;
-    const managedPath = path.join(MANAGED_TEMP_DIR, managedFileName);
+    const ext = path.extname(hermesTempPath) || ".mp3";
+    const managedFileName = `hermes-api-${id}${ext}`;
+    const managedPath = path.join(AUDIOS_DIR, managedFileName);
 
     fs.copyFileSync(hermesTempPath, managedPath);
 
@@ -97,6 +122,7 @@ export class AudioFileManager {
     const entry = {
       id,
       path: managedPath,
+      url: `/audios/${managedFileName}`,
       text: text || "",
       timestamp: Date.now(),
       duration,

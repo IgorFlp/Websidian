@@ -19,6 +19,8 @@ class HermesClient {
   getHeaders() {
     return {
       "Content-Type": "application/json",
+      "X-API-Key": this.apiKey,
+      "API_SERVER_KEY": this.apiKey,
       ...(this.apiKey && { Authorization: `Bearer ${this.apiKey}` }),
     };
   }

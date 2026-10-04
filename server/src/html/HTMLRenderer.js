@@ -16,6 +16,10 @@ const humanTemplate = fs.readFileSync(
   path.join(COMPONENTS_DIR, "Human-message-template.html"),
   "utf8"
 );
+const sessionsTemplate = fs.readFileSync(
+  path.join(COMPONENTS_DIR, "sessions-template.html"),
+  "utf8"
+);
 
 function escapeHtml(text) {
   if (!text) return "";
@@ -91,19 +95,14 @@ export class HTMLRenderer {
       );
       html = html.split('{Reasoning text}').join(reasoningText || "");
       html = html.split('{Output text}').join(displayText);
-      html = html.split('{CLI Command}').join("");
-      html = html.split('{Exit Status}').join("");
-      html = html.split('{Stream Label}').join("");
-      html = html.split('{Stream Message}').join("");
-      html = html.split('{Bench Label}').join("");
-      html = html.split('{Bench Value}').join("");
-      html = html.split('{Buffer Label}').join("");
-      html = html.split('{Buffer Message}').join("");
-      html = html.split('{Pipeline Status}').join("");
+      
+      // CLI output only if present in output text
+      const cliOutput = "";
+      html = html.split('{CLI Output}').join(cliOutput);
+      
       html = html.split('{TTS Button Title}').join("Reproduzir Síntese Vocal");
       html = html.split('{TTS Audio Path}').join(ttsAudioPath || "");
-      html = html.split('{TTS Title}').join("Síntese Vocal Agêntica");
-      html = html.split('{TTS Subtitle}').join("Hermes Neural Voxtral");
+      html = html.split('{tts_audio_path}').join(ttsAudioPath || "");
 
       html = html.split('id="brainBtn"').join(`id="${brainBtnId}"`);
       html = html.split('id="brainIcon"').join(`id="${brainIconId}"`);
@@ -122,7 +121,7 @@ document.getElementById('${brainBtnId}').addEventListener('click', function() {
 });
 </script>`;
 
-      html = html.replace("</script>", "") + script;
+      html = html + script;
 
       return html;
     }
@@ -156,15 +155,14 @@ document.getElementById('${brainBtnId}').addEventListener('click', function() {
       const messageCount = session.messageCount || session.count || 0;
       const timeAgo = formatElapsedTime(typeof lastActivity === "string" ? Date.parse(lastActivity) : lastActivity);
 
+      let sessionHtml = sessionsTemplate;
+      sessionHtml = sessionHtml.split("{Session Name}").join(escapeHtml(title));
+      sessionHtml = sessionHtml.split("{Session Time}").join(escapeHtml(timeAgo));
+      sessionHtml = sessionHtml.split("{Session ID}").join(escapeHtml(sessionId));
+
       html += `
         <li class="session-item" data-session-id="${escapeHtml(sessionId)}">
-          <div class="session-info">
-            <span class="session-title">${escapeHtml(title)}</span>
-            <span class="session-meta">${timeAgo} • ${messageCount} msgs</span>
-          </div>
-          <button class="session-action-btn" data-action="load-session" data-session-id="${escapeHtml(sessionId)}">
-            <span class="material-icons">open_in_new</span>
-          </button>
+          ${sessionHtml}         
         </li>
       `;
     }

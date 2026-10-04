@@ -147,19 +147,25 @@ export class ChatService {
 
     const { text, audioPath, reasoningText, outputText, responseTime } = parseHermesResponse(hermesResponse);
 
+    console.log("[ChatService] Hermes response parsed:", { text, audioPath, reasoningText, outputText, responseTime });
+
     let audioArray = [];
     if (audioPath) {
+      console.log("[ChatService] Processing audio file:", audioPath);
       try {
         const audioFile = await this.audioFileManager.addFromHermesTemp(audioPath, text);
+        console.log("[ChatService] Audio file processed:", audioFile.url);
         audioArray = [{
           id: audioFile.id,
-          url: `/audio/${audioFile.id}`,
+          url: audioFile.url,
           text: audioFile.text,
           duration: audioFile.duration,
         }];
       } catch (err) {
         console.error("Failed to process audio file:", err.message);
       }
+    } else {
+      console.log("[ChatService] No audio path in response");
     }
 
     const messageData = {
@@ -170,7 +176,7 @@ export class ChatService {
       audio: audioArray.length > 0 ? audioArray[0] : null,
       reasoningText,
       outputText,
-      ttsAudioPath: audioPath,
+      ttsAudioPath: audioArray.length > 0 ? audioArray[0].url : null,
       responseTime,
     };
 
@@ -179,15 +185,10 @@ export class ChatService {
 
     return {
       sessionId: currentSessionId,
-      html: htmlRepository.buildHtml(currentSessionId, this.htmlRenderer),
+      html: "",
       audio: audioArray,
       streaming: false,
     };
-  }
-
-  getMessagesHtml(sessionId, renderer) {
-    if (!sessionId) return "";
-    return htmlRepository.buildHtml(sessionId, renderer);
   }
 
   isStreaming(sessionId) {

@@ -14,19 +14,7 @@
     </div>
     <div class="ai-output">
         <p>{Output text}</p>
-        <div class="cli-output">
-            <div class="cli-header">
-                <span class="cli-cmd">{CLI Command}</span>
-                <span class="cli-status">{Exit Status}</span>
-            </div>
-            <div class="cli-body">
-                <p>{CLI Line 1}</p>
-                <p><span class="text-secondary">{Stream Label}</span> {Stream Message}</p>
-                <p><span class="text-primary">{Bench Label}</span> {Bench Value}</p>
-                <p><span class="text-tertiary">{Buffer Label}</span> {Buffer Message}</p>
-                <p class="font-semibold">&gt;&gt; {Pipeline Status}</p>
-            </div>
-        </div>
+        {CLI Output}
         <div class="tts-player">
             <div class="flex items-center gap-3">
                 <button src="{tts_audio_path}" class="tts-play-btn" title="{TTS Button Title}"
@@ -43,17 +31,7 @@
                 <span class="tts-wave-bar"></span>
                 <span class="tts-wave-bar"></span>
                 <span class="tts-wave-bar"></span>
-                <span class="tts-wave-bar"></span>
             </div>
         </div>
     </div>
 </div>
-<script>
-    document.getElementById('brainBtn').addEventListener('click', function () {
-        var rc = document.getElementById('reasoningContainer');
-        var icon = document.getElementById('brainIcon');
-        rc.classList.toggle('collapsed');
-        rc.classList.toggle('expanded');
-        icon.classList.toggle('expanded');
-    });
-</script>

@@ -1,9 +1,15 @@
+import dotenv from "dotenv";
+import { fileURLToPath } from "url";
+import path from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.join(__dirname, "..", ".env") });
+
 import express from "express";
 import fs from "fs";
 import os from "os";
-import path from "path";
-import dotenv from "dotenv";
-import { fileURLToPath } from "url";
 import session from "express-session";
 import swaggerUi from "swagger-ui-express";
 import yaml from "yaml";
@@ -14,11 +20,6 @@ import { ProfilesService } from "./src/profiles/ProfilesService.js";
 import { audioFileManager } from "./src/audio/AudioFileManager.js";
 import { htmlRenderer } from "./src/html/HTMLRenderer.js";
 import { htmlRepository } from "./src/html/HTMLRepository.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-dotenv.config({ path: path.join(__dirname, "..", ".env") });
 
 const app = express();
 
@@ -1111,7 +1112,7 @@ app.post("/chat", authApi, logHermesRequest, express.json(), async (req, res) =>
 app.get("/messages/:sessionId", authApi, logHermesRequest, async (req, res) => {
   try {
     const { sessionId } = req.params;
-    const html = chatService.getMessagesHtml(sessionId, htmlRenderer);
+    const html = await htmlRepository.fetchAndBuildHtml(sessionId, htmlRenderer);
     const streaming = htmlRepository.isStreaming(sessionId);
     res.setHeader("Content-Type", "text/html");
     res.setHeader("X-Streaming", streaming ? "true" : "false");

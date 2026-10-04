@@ -2,9 +2,9 @@
   "name": "server",
   "version": "1.0.0",
   "type": "module",
-  "main": "api.js",
+  "main": "bootstrap.js",
   "scripts": {
-    "start": "node server/api.js"
+    "start": "node bootstrap.js"
   },
   "keywords": [],
   "author": "",

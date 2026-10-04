@@ -4,6 +4,46 @@ var mediaRecorder = null;
 var recordedChunks = [];
 var isRecording = false;
 
+var ACTIVE_SESSION_KEY = "hermes_active_session";
+
+function getActiveSessionId() {
+  if (currentSessionId) return currentSessionId;
+  return localStorage.getItem(ACTIVE_SESSION_KEY);
+}
+
+function setActiveSessionId(sessionId) {
+  currentSessionId = sessionId;
+  if (sessionId) localStorage.setItem(ACTIVE_SESSION_KEY, sessionId);
+  else localStorage.removeItem(ACTIVE_SESSION_KEY);
+}
+
+function ensureSessionId(callback) {
+  var existing = getActiveSessionId();
+  if (existing) {
+    callback(existing);
+    return;
+  }
+  var xhr = new XMLHttpRequest();
+  xhr.open("POST", "/sessions", true);
+  xhr.setRequestHeader("Content-Type", "application/json");
+  xhr.onreadystatechange = function () {
+    if (xhr.readyState !== 4) return;
+    if (xhr.status === 401) { window.location.href = "/login"; return; }
+    if (xhr.status === 201) {
+      try {
+        var resp = JSON.parse(xhr.responseText);
+        if (resp && resp.sessionId) {
+          setActiveSessionId(resp.sessionId);
+          callback(resp.sessionId);
+        }
+      } catch (e) { alert("Erro ao criar sessão"); }
+    } else {
+      alert("Erro ao criar sessão: " + xhr.status);
+    }
+  };
+  xhr.send(JSON.stringify({ title: "Chat " + new Date().toLocaleString() }));
+}
+
 function httpPost(url, data, callback) {
   var xhr = new XMLHttpRequest();
   xhr.open("POST", url, true);
@@ -49,12 +89,56 @@ function loadSessions() {
     var sessionsList = document.getElementById("sessionsList");
     if (sessionsList) {
       sessionsList.innerHTML = html;
+      console.log("[hermes] Sessions loaded, items:", sessionsList.querySelectorAll(".session-item").length);
+      attachSessionClickHandlers();
     }
     var countEl = document.getElementById("sessionsCount");
     if (countEl) {
       var match = html.match(/session-item/g);
       countEl.textContent = match ? match.length : 0;
     }
+  });
+}
+
+function attachSessionClickHandlers() {
+  var sessionsList = document.getElementById("sessionsList");
+  if (!sessionsList) return;
+  
+  // Remove old listener if exists
+  if (sessionsList._sessionClickHandler) {
+    sessionsList.removeEventListener("click", sessionsList._sessionClickHandler);
+  }
+  
+  // Event delegation on the container
+  sessionsList._sessionClickHandler = function (e) {
+    var item = e.target.closest(".session-item");
+    if (!item) return;
+    
+    var sessionId = item.getAttribute("data-session-id");
+    if (sessionId) {
+      console.log("[hermes] Session clicked:", sessionId);
+      openSession(sessionId);
+    }
+  };
+  
+  sessionsList.addEventListener("click", sessionsList._sessionClickHandler);
+}
+
+function openSession(sessionId) {
+  console.log("[hermes] Opening session:", sessionId);
+  setActiveSessionId(sessionId);
+  stopPolling();
+  var streamContent = document.getElementById("streamContent");
+  if (streamContent) {
+    streamContent.innerHTML = "";
+  }
+  httpGet("/messages/" + sessionId, function (html) {
+    console.log("[hermes] Messages loaded for session:", sessionId, "length:", html ? html.length : 0);
+    if (streamContent && html) {
+      streamContent.innerHTML = html;
+      streamContent.scrollTop = streamContent.scrollHeight;
+    }
+    startPolling(sessionId);
   });
 }
 
@@ -105,16 +189,18 @@ function sendTextMessage() {
   }
   inputField.value = "";
 
-  httpPost("/chat", JSON.stringify({ input: text }), function (resp) {
-    if (resp && resp.sessionId) {
-      currentSessionId = resp.sessionId;
-      startPolling(currentSessionId);
-    }
-    if (resp && resp.audio && resp.audio.length > 0) {
-      var audio = resp.audio[0];
-      var audioEl = document.getElementById("audio-" + audio.id);
-      if (audioEl) audioEl.play();
-    }
+  ensureSessionId(function (sessionId) {
+    httpPost("/chat", JSON.stringify({ input: text, sessionId: sessionId }), function (resp) {
+      if (resp && resp.sessionId) {
+        setActiveSessionId(resp.sessionId);
+        startPolling(resp.sessionId);
+      }
+      if (resp && resp.audio && resp.audio.length > 0) {
+        var audio = resp.audio[0];
+        var audioEl = document.getElementById("audio-" + audio.id);
+        if (audioEl) audioEl.play();
+      }
+    });
   });
 }
 
@@ -129,16 +215,18 @@ function blobToBase64(blob) {
 
 function sendAudioMessage(audioBlob) {
   blobToBase64(audioBlob).then(function (base64) {
-    httpPost("/chat", JSON.stringify({ audio: base64 }), function (resp) {
-      if (resp && resp.sessionId) {
-        currentSessionId = resp.sessionId;
-        startPolling(currentSessionId);
-      }
-      if (resp && resp.audio && resp.audio.length > 0) {
-        var audio = resp.audio[0];
-        var audioEl = document.getElementById("audio-" + audio.id);
-        if (audioEl) audioEl.play();
-      }
+    ensureSessionId(function (sessionId) {
+      httpPost("/chat", JSON.stringify({ audio: base64, sessionId: sessionId }), function (resp) {
+        if (resp && resp.sessionId) {
+          setActiveSessionId(resp.sessionId);
+          startPolling(resp.sessionId);
+        }
+        if (resp && resp.audio && resp.audio.length > 0) {
+          var audio = resp.audio[0];
+          var audioEl = document.getElementById("audio-" + audio.id);
+          if (audioEl) audioEl.play();
+        }
+      });
     });
   }).catch(function () {
     alert("Erro ao converter áudio");
