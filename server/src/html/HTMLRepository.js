@@ -55,7 +55,6 @@ class HTMLRepository {
     let text = "";
     let reasoningText = null;
     let outputText = null;
-    let ttsAudioPath = null;
     let responseTime = null;
 
     if (typeof msg.content === "string") {
@@ -63,7 +62,6 @@ class HTMLRepository {
         const parsed = JSON.parse(msg.content);
         if (parsed.response_time !== undefined || parsed.output_text !== undefined) {
           text = parsed.output_text || parsed.text || "";
-          ttsAudioPath = parsed.tts_audio_path || null;
           reasoningText = parsed.reasoning_text || null;
           outputText = parsed.output_text || null;
           responseTime = parsed.response_time ?? null;
@@ -76,7 +74,6 @@ class HTMLRepository {
     } else if (msg.content && typeof msg.content === "object") {
       if (msg.content.output_text !== undefined || msg.content.reasoning_text !== undefined) {
         text = msg.content.output_text || msg.content.text || "";
-        ttsAudioPath = msg.content.tts_audio_path || null;
         reasoningText = msg.content.reasoning_text || null;
         outputText = msg.content.output_text || null;
         responseTime = msg.content.response_time ?? null;
@@ -97,7 +94,6 @@ class HTMLRepository {
       audio: null,
       reasoningText,
       outputText,
-      ttsAudioPath,
       responseTime,
     };
   }

@@ -1,7 +1,6 @@
 import { getHermesClient } from "../hermes/HermesClient.js";
 import { chat_prompt } from "../prompts/Chat-prompt.js";
 import { htmlRepository } from "../html/HTMLRepository.js";
-import { ttsService } from "../audio/TTSService.js";
 import fs from "fs";
 import os from "os";
 import path from "path";
@@ -62,7 +61,6 @@ export class ChatService {
     this.audioFileManager = audioFileManager;
     this.htmlRenderer = htmlRenderer;
     this.hermesClient = getHermesClient();
-    this.ttsService = ttsService;
   }
 
   async processChat(input, sessionId = null) {
@@ -104,7 +102,6 @@ export class ChatService {
         audio: { id, url: `/audio/${id}`, text: "Áudio enviado", duration: 0 },
         reasoningText: null,
         outputText: null,
-        ttsAudioPath: null,
         responseTime: null,
       };
 
@@ -129,39 +126,21 @@ export class ChatService {
       throw { status: 500, message: `Hermes API error: ${err.message}` };
     }
 
+    console.log("[ChatService] Raw Hermes response:", JSON.stringify(hermesResponse).slice(0, 500));
+
     const { text, reasoningText, outputText, responseTime } = parseHermesResponse(hermesResponse);
 
     console.log("[ChatService] Hermes response parsed:", { text, reasoningText, outputText, responseTime });
-
-    let audioArray = [];
-    const ttsText = outputText || text;
-    if (ttsText && ttsText.trim()) {
-      console.log("[ChatService] Generating TTS for:", ttsText.slice(0, 50));
-      try {
-        const ttsFile = await this.ttsService.generateAndSave(ttsText);
-        if (ttsFile) {
-          console.log("[ChatService] TTS generated:", ttsFile.url);
-          audioArray = [{
-            id: ttsFile.id,
-            url: ttsFile.url,
-            text: ttsFile.text,
-            duration: 0,
-          }];
-        }
-      } catch (err) {
-        console.error("[ChatService] Failed to generate TTS:", err.message);
-      }
-    }
 
     const messageData = {
       id: `msg-${Date.now()}`,
       isAI: true,
       text,
       timestamp: Date.now(),
-      audio: audioArray.length > 0 ? audioArray[0] : null,
+      audio: null,
       reasoningText,
       outputText,
-      ttsAudioPath: audioArray.length > 0 ? audioArray[0].url : null,
+      ttsAudioPath: null,
       responseTime,
     };
 
@@ -171,7 +150,7 @@ export class ChatService {
     return {
       sessionId: currentSessionId,
       html: "",
-      audio: audioArray,
+      audio: [],
       streaming: false,
     };
   }

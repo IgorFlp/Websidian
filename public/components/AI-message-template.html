@@ -17,20 +17,12 @@
         {CLI Output}
         <div class="tts-player">
             <div class="flex items-center gap-3">
-                <button src="{tts_audio_path}" class="tts-play-btn" title="{TTS Button Title}"
-                    data-tts-path="{TTS Audio Path}">
+                <button class="tts-play-btn" title="Ouvir resposta" data-tts-text="{Output text}">
                     <span data-icon="play_arrow">▶</span>
                 </button>
-            </div>
-            <div class="tts-waveform">
-                <span class="tts-wave-bar"></span>
-                <span class="tts-wave-bar"></span>
-                <span class="tts-wave-bar"></span>
-                <span class="tts-wave-bar"></span>
-                <span class="tts-wave-bar"></span>
-                <span class="tts-wave-bar"></span>
-                <span class="tts-wave-bar"></span>
-                <span class="tts-wave-bar"></span>
+                <button class="tts-stop-btn" title="Parar" style="display:none;">
+                    <span data-icon="stop">■</span>
+                </button>
             </div>
         </div>
     </div>

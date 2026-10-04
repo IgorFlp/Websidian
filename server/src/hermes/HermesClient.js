@@ -108,15 +108,8 @@ class HermesClient {
     }
   }
 
-  async createSession() {
-    const sessions = await this.getSessions({ limit: 1 });
-    if (sessions && sessions.data && sessions.data.length > 0) {
-      return { sessionId: sessions.data[0].id };
-    }
-    if (sessions && sessions.length > 0) {
-      return { sessionId: sessions[0].id };
-    }
-    throw new Error("No existing sessions found. Create one via Hermes dashboard first.");
+  async createSession(title = "New Chat") {
+    return this.post("/api/sessions", { title });
   }
 
   async chat(sessionId, input, systemPrompt = null) {

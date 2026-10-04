@@ -5,6 +5,10 @@ var recordedChunks = [];
 var isRecording = false;
 
 var ACTIVE_SESSION_KEY = "hermes_active_session";
+var KOKORO_API_URL = ""; // Will be loaded from server config
+var activeAudio = null;
+var autoPlayEnabled = true; // Auto-play TTS after AI response
+var lastMessageCount = 0;
 
 function getActiveSessionId() {
   if (currentSessionId) return currentSessionId;
@@ -15,6 +19,164 @@ function setActiveSessionId(sessionId) {
   currentSessionId = sessionId;
   if (sessionId) localStorage.setItem(ACTIVE_SESSION_KEY, sessionId);
   else localStorage.removeItem(ACTIVE_SESSION_KEY);
+}
+
+// Polyfill for Element.closest() - Android 4 compatibility
+if (!Element.prototype.closest) {
+  Element.prototype.closest = function (selector) {
+    var el = this;
+    while (el) {
+      if (el.matches ? el.matches(selector) : el.msMatchesSelector(selector)) {
+        return el;
+      }
+      el = el.parentElement;
+    }
+    return null;
+  };
+}
+
+// Polyfill for Element.matches() - Android 4 compatibility
+if (!Element.prototype.matches) {
+  Element.prototype.matches = Element.prototype.msMatchesSelector || Element.prototype.webkitMatchesSelector;
+}
+
+// Polyfill for classList - older Android
+if (!("classList" in document.documentElement)) {
+  Object.defineProperty(HTMLElement.prototype, "classList", {
+    get: function () {
+      var self = this;
+      function update(fn) {
+        return function (value) {
+          var classes = self.className.split(/\s+/);
+          var index = classes.indexOf(value);
+          fn(classes, index, value);
+          self.className = classes.join(" ");
+        };
+      }
+      return {
+        add: update(function (classes, index, value) {
+          if (index === -1) classes.push(value);
+        }),
+        remove: update(function (classes, index) {
+          if (index !== -1) classes.splice(index, 1);
+        }),
+        toggle: update(function (classes, index, value) {
+          if (index === -1) classes.push(value);
+          else classes.splice(index, 1);
+        }),
+        contains: function (value) {
+          return self.className.split(/\s+/).indexOf(value) !== -1;
+        },
+      };
+    },
+  });
+}
+
+// Load Kokoro API URL from server config
+function loadKokoroConfig(callback) {
+  var xhr = new XMLHttpRequest();
+  xhr.open("GET", "/api/tts-config", true);
+  xhr.onreadystatechange = function () {
+    if (xhr.readyState !== 4) return;
+    if (xhr.status === 200) {
+      try {
+        var config = JSON.parse(xhr.responseText);
+        KOKORO_API_URL = config.url || "";
+        autoPlayEnabled = config.autoPlay !== false;
+        console.log("[TTS] Kokoro API URL loaded:", KOKORO_API_URL);
+      } catch (e) {
+        console.warn("[TTS] Failed to parse TTS config:", e);
+      }
+    } else {
+      console.warn("[TTS] Could not load TTS config, status:", xhr.status);
+    }
+    if (callback) callback();
+  };
+  xhr.send();
+}
+
+function speakText(text, lang) {
+  if (!text || !text.trim()) return;
+  if (!KOKORO_API_URL) {
+    console.warn("[TTS] Kokoro API URL not configured");
+    return;
+  }
+
+  stopSpeaking(); // cancel any ongoing
+
+  var payload = {
+    voice_aliases: {},
+    model: "kokoro",
+    input: text,
+    voice: "pm_alex",
+    response_format: "mp3",
+    download_format: "mp3",
+    speed: 1,
+    stream: true,
+    return_download_link: false,
+    return_timing: false,
+    lang_code: "p",
+    volume_multiplier: 1,
+    normalization_options: {
+      normalize: true,
+      unit_normalization: false,
+      url_normalization: true,
+      email_normalization: true,
+      optional_pluralization_normalization: true,
+      phone_normalization: true,
+      caps_normalization: true,
+      replace_remaining_symbols: true,
+      remove_emoji: false
+    },
+    allow_voice_tags: false,
+    ssml: false
+  };
+
+  var xhr = new XMLHttpRequest();
+  xhr.open("POST", KOKORO_API_URL+"/audio/speech", true);
+  xhr.setRequestHeader("Content-Type", "application/json");
+  xhr.setRequestHeader("accept", "*/*");
+  xhr.responseType = "blob";
+  xhr.onload = function () {
+    if (xhr.status === 200 && xhr.response) {
+      var audioBlob = xhr.response;
+      var audioUrl = URL.createObjectURL(audioBlob);
+      var audio = new Audio(audioUrl);
+      audio.volume = 1.0;
+      audio.onended = function () {
+        URL.revokeObjectURL(audioUrl);
+        activeAudio = null;
+      };
+      audio.onerror = function () {
+        URL.revokeObjectURL(audioUrl);
+        console.warn("[TTS] Audio playback error");
+        activeAudio = null;
+      };
+      audio.play();
+      activeAudio = audio;
+    } else {
+      console.warn("[TTS] Failed to generate audio, status:", xhr.status);
+    }
+  };
+  xhr.onerror = function () {
+    console.warn("[TTS] Network error calling Kokoro API");
+  };
+  xhr.send(JSON.stringify(payload));
+}
+
+function stopSpeaking() {
+  if (activeAudio) {
+    activeAudio.pause();
+    activeAudio.src = "";
+    activeAudio = null;
+  }
+}
+
+function playTTSForElement(btn) {
+  var text = btn.getAttribute("data-tts-text");
+  if (text) {
+    speakText(text, "pt-BR");
+  }
 }
 
 function ensureSessionId(callback) {
@@ -79,7 +241,13 @@ function httpGet(url, callback) {
     }
     if (xhr.status === 200) {
       callback(xhr.responseText);
+    } else {
+      console.error("[hermes] HTTP GET error:", xhr.status, xhr.statusText, url);
+      // Silently fail for polling, but could show error for initial load
     }
+  };
+  xhr.onerror = function () {
+    console.error("[hermes] Network error on GET:", url);
   };
   xhr.send();
 }
@@ -104,24 +272,37 @@ function attachSessionClickHandlers() {
   var sessionsList = document.getElementById("sessionsList");
   if (!sessionsList) return;
   
-  // Remove old listener if exists
+  // Remove old listeners if exists
   if (sessionsList._sessionClickHandler) {
     sessionsList.removeEventListener("click", sessionsList._sessionClickHandler);
   }
+  if (sessionsList._sessionTouchHandler) {
+    sessionsList.removeEventListener("touchend", sessionsList._sessionTouchHandler);
+  }
   
-  // Event delegation on the container
-  sessionsList._sessionClickHandler = function (e) {
+  // Shared handler for both click and touchend
+  var handleSessionSelect = function (e) {
     var item = e.target.closest(".session-item");
     if (!item) return;
     
     var sessionId = item.getAttribute("data-session-id");
     if (sessionId) {
-      console.log("[hermes] Session clicked:", sessionId);
+      console.log("[hermes] Session selected:", sessionId);
       openSession(sessionId);
     }
   };
   
+  // Event delegation on the container - click for desktop
+  sessionsList._sessionClickHandler = handleSessionSelect;
   sessionsList.addEventListener("click", sessionsList._sessionClickHandler);
+  
+  // Touchend for mobile/tablet (fires before click, prevents 300ms delay)
+  sessionsList._sessionTouchHandler = function (e) {
+    // Prevent click from also firing
+    e.preventDefault();
+    handleSessionSelect(e);
+  };
+  sessionsList.addEventListener("touchend", sessionsList._sessionTouchHandler, { passive: false });
 }
 
 function openSession(sessionId) {
@@ -137,6 +318,12 @@ function openSession(sessionId) {
     if (streamContent && html) {
       streamContent.innerHTML = html;
       streamContent.scrollTop = streamContent.scrollHeight;
+      // Initialize lastMessageCount with current AI messages
+      var tempDiv = document.createElement("div");
+      tempDiv.innerHTML = html;
+      lastMessageCount = tempDiv.querySelectorAll(".ai-message").length;
+    } else {
+      lastMessageCount = 0;
     }
     startPolling(sessionId);
   });
@@ -148,6 +335,25 @@ function startPolling(sessionId) {
     httpGet("/messages/" + sessionId, function (html) {
       var streamContent = document.getElementById("streamContent");
       if (streamContent && html) {
+        // Check for new AI messages before updating HTML
+        var tempDiv = document.createElement("div");
+        tempDiv.innerHTML = html;
+        var aiMessages = tempDiv.querySelectorAll(".ai-message");
+        var currentMessageCount = aiMessages.length;
+        
+        if (currentMessageCount > lastMessageCount && autoPlayEnabled && KOKORO_API_URL) {
+          // New AI message detected, get the last one's text
+          var lastAIMessage = aiMessages[aiMessages.length - 1];
+          var outputText = lastAIMessage.querySelector(".ai-output p");
+          if (outputText && outputText.textContent.trim()) {
+            // Small delay to ensure DOM is updated
+            setTimeout(function () {
+              speakText(outputText.textContent.trim(), "pt-BR");
+            }, 100);
+          }
+        }
+        lastMessageCount = currentMessageCount;
+        
         streamContent.innerHTML = html;
         streamContent.scrollTop = streamContent.scrollHeight;
       }
@@ -177,6 +383,66 @@ function sendTextMessage() {
   var inputField = document.getElementById("inputField");
   var text = inputField.value.trim();
   if (!text) return;
+  sendTextMessageDirect(text);
+}
+
+function sendAudioMessage(audioBlob) {
+  var btnMic = document.getElementById("btnMic");
+  if (btnMic) {
+    btnMic.classList.add("processing");
+    btnMic.title = "Transcrevendo...";
+  }
+
+  // Convert blob to base64 for Puter
+  var reader = new FileReader();
+  reader.onloadend = function () {
+    var base64 = reader.result.split(",")[1];
+    
+    // Use Puter's speech2txt for STT
+    if (typeof puter !== "undefined" && puter.ai && puter.ai.speech2txt) {
+      puter.ai.speech2txt(base64, "audio/webm")
+        .then(function (text) {
+          console.log("[STT] Transcribed:", text);
+          if (btnMic) {
+            btnMic.classList.remove("processing");
+            btnMic.title = "Gravar Áudio";
+          }
+          if (text && text.trim()) {
+            sendTextMessageDirect(text.trim());
+          } else {
+            alert("Nenhum texto detectado no áudio");
+          }
+        })
+        .catch(function (err) {
+          console.error("[STT] Error:", err);
+          if (btnMic) {
+            btnMic.classList.remove("processing");
+            btnMic.title = "Gravar Áudio";
+          }
+          alert("Erro na transcrição: " + (err.message || err));
+        });
+    } else {
+      console.error("[STT] Puter not available");
+      if (btnMic) {
+        btnMic.classList.remove("processing");
+        btnMic.title = "Gravar Áudio";
+      }
+      alert("STT não disponível - Puter SDK não carregado");
+    }
+  };
+  reader.onerror = function () {
+    if (btnMic) {
+      btnMic.classList.remove("processing");
+      btnMic.title = "Gravar Áudio";
+    }
+    alert("Erro ao ler áudio");
+  };
+  reader.readAsDataURL(audioBlob);
+}
+
+function sendTextMessageDirect(text) {
+  var inputField = document.getElementById("inputField");
+  if (!text) return;
 
   var userMsgHtml = '<div class="message-block user-message" data-timestamp="' + Date.now() + '" data-is-ai="false">' +
     '<div class="message-header"><span class="agent-indicator">● User</span></div>' +
@@ -187,7 +453,7 @@ function sendTextMessage() {
     streamContent.innerHTML += userMsgHtml;
     streamContent.scrollTop = streamContent.scrollHeight;
   }
-  inputField.value = "";
+  if (inputField) inputField.value = "";
 
   ensureSessionId(function (sessionId) {
     httpPost("/chat", JSON.stringify({ input: text, sessionId: sessionId }), function (resp) {
@@ -195,41 +461,7 @@ function sendTextMessage() {
         setActiveSessionId(resp.sessionId);
         startPolling(resp.sessionId);
       }
-      if (resp && resp.audio && resp.audio.length > 0) {
-        var audio = resp.audio[0];
-        var audioEl = document.getElementById("audio-" + audio.id);
-        if (audioEl) audioEl.play();
-      }
     });
-  });
-}
-
-function blobToBase64(blob) {
-  return new Promise(function (resolve, reject) {
-    var reader = new FileReader();
-    reader.onloadend = function () { resolve(reader.result.split(",")[1]); };
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-}
-
-function sendAudioMessage(audioBlob) {
-  blobToBase64(audioBlob).then(function (base64) {
-    ensureSessionId(function (sessionId) {
-      httpPost("/chat", JSON.stringify({ audio: base64, sessionId: sessionId }), function (resp) {
-        if (resp && resp.sessionId) {
-          setActiveSessionId(resp.sessionId);
-          startPolling(resp.sessionId);
-        }
-        if (resp && resp.audio && resp.audio.length > 0) {
-          var audio = resp.audio[0];
-          var audioEl = document.getElementById("audio-" + audio.id);
-          if (audioEl) audioEl.play();
-        }
-      });
-    });
-  }).catch(function () {
-    alert("Erro ao converter áudio");
   });
 }
 
@@ -323,11 +555,13 @@ function initChat() {
     }
     var ttsBtn = e.target.closest(".tts-play-btn");
     if (ttsBtn) {
-      var path = ttsBtn.getAttribute("data-tts-path");
-      if (path) {
-        var audio = new Audio(path);
-        audio.play();
-      }
+      playTTSForElement(ttsBtn);
+      return;
+    }
+    var stopBtn = e.target.closest(".tts-stop-btn");
+    if (stopBtn) {
+      stopSpeaking();
+      return;
     }
   });
 }
@@ -340,6 +574,8 @@ function escapeHtml(text) {
 
 window.addEventListener("load", function () {
   if (window.initSidebar) initSidebar();
-  loadSessions();
-  initChat();
+  loadKokoroConfig(function () {
+    loadSessions();
+    initChat();
+  });
 });

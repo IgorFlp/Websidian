@@ -75,7 +75,6 @@ export class HTMLRenderer {
     isLastAI = false,
     reasoningText = null,
     outputText = null,
-    ttsAudioPath = null,
     responseTime = null,
   }) {
     const elapsed = formatElapsedTime(timestamp);
@@ -99,10 +98,6 @@ export class HTMLRenderer {
       // CLI output only if present in output text
       const cliOutput = "";
       html = html.split('{CLI Output}').join(cliOutput);
-      
-      html = html.split('{TTS Button Title}').join("Reproduzir Síntese Vocal");
-      html = html.split('{TTS Audio Path}').join(ttsAudioPath || "");
-      html = html.split('{tts_audio_path}').join(ttsAudioPath || "");
 
       html = html.split('id="brainBtn"').join(`id="${brainBtnId}"`);
       html = html.split('id="brainIcon"').join(`id="${brainIconId}"`);

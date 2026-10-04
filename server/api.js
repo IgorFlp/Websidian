@@ -47,6 +47,13 @@ app.get("/test-swagger", (req, res) => {
   res.json({ ok: true });
 });
 
+app.get("/api/tts-config", (req, res) => {
+  res.json({
+    url: process.env.KOKORO_API_URL || "",
+    autoPlay: process.env.KOKORO_AUTO_PLAY !== "false"
+  });
+});
+
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 const IGNORED_DIRS = [".obsidian", ".trash", ".git", "node_modules"];
@@ -1391,43 +1398,9 @@ app.get("/terminal/poll", authApi, logTerminalRequest, async (req, res) => {
     if (newEntries.length > 0) {
       // Parse blocks to identify AI messages
       const blocks = htmlRenderer.parseBlocks(newEntries);
-      const audioMap = new Map();
-      const audioItems = [];
       
-      // Generate TTS for new AI messages
-      for (const block of blocks) {
-        if (block.isAI) {
-          let audioInfo = audioFileManager.get(`block-${block.id}`);
-          
-          // Check if this AI block already has audio (by text content match)
-          const existingAudio = audioFileManager.getAll().find(a => a.text === block.text);
-          
-          if (!existingAudio) {
-            try {
-              console.log(`Generating TTS for AI response: ${block.text.substring(0, 50)}...`);
-              const audioFile = await ttsService.generateForText(block.text);
-              audioFileManager.add(audioFile);
-              audioInfo = audioFile;
-            } catch (err) {
-              console.error("TTS generation failed:", err.message);
-            }
-          } else {
-            audioInfo = existingAudio;
-          }
-          
-          if (audioInfo) {
-            audioMap.set(block.id, audioInfo);
-            audioItems.push({
-              id: audioInfo.id,
-              url: `/audio/${audioInfo.id}`,
-              text: audioInfo.text,
-            });
-          }
-        }
-      }
-      
-      // Render HTML with audio players
-      const renderedBlocks = htmlRenderer.renderMessageBlocks(newEntries, audioMap);
+      // Render HTML without audio players
+      const renderedBlocks = htmlRenderer.renderMessageBlocks(newEntries, new Map());
       const html = renderedBlocks.join("\n");
       
       const newSince = newEntries[newEntries.length - 1].timestamp;
@@ -1435,7 +1408,7 @@ app.get("/terminal/poll", authApi, logTerminalRequest, async (req, res) => {
       return res.json({
         since: newSince,
         html,
-        audio: audioItems,
+        audio: [],
       });
     }
     
