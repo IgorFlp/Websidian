@@ -1,7 +1,6 @@
 var chatPollingInterval = null;
 var currentSessionId = null;
-var mediaRecorder = null;
-var recordedChunks = [];
+var speechRecognition = null;
 var isRecording = false;
 
 var ACTIVE_SESSION_KEY = "hermes_active_session";
@@ -393,51 +392,14 @@ function sendAudioMessage(audioBlob) {
     btnMic.title = "Transcrevendo...";
   }
 
-  // Convert blob to base64 for Puter
-  var reader = new FileReader();
-  reader.onloadend = function () {
-    var base64 = reader.result.split(",")[1];
-    
-    // Use Puter's speech2txt for STT
-    if (typeof puter !== "undefined" && puter.ai && puter.ai.speech2txt) {
-      puter.ai.speech2txt(base64, "audio/webm")
-        .then(function (text) {
-          console.log("[STT] Transcribed:", text);
-          if (btnMic) {
-            btnMic.classList.remove("processing");
-            btnMic.title = "Gravar Áudio";
-          }
-          if (text && text.trim()) {
-            sendTextMessageDirect(text.trim());
-          } else {
-            alert("Nenhum texto detectado no áudio");
-          }
-        })
-        .catch(function (err) {
-          console.error("[STT] Error:", err);
-          if (btnMic) {
-            btnMic.classList.remove("processing");
-            btnMic.title = "Gravar Áudio";
-          }
-          alert("Erro na transcrição: " + (err.message || err));
-        });
-    } else {
-      console.error("[STT] Puter not available");
-      if (btnMic) {
-        btnMic.classList.remove("processing");
-        btnMic.title = "Gravar Áudio";
-      }
-      alert("STT não disponível - Puter SDK não carregado");
-    }
-  };
-  reader.onerror = function () {
-    if (btnMic) {
-      btnMic.classList.remove("processing");
-      btnMic.title = "Gravar Áudio";
-    }
-    alert("Erro ao ler áudio");
-  };
-  reader.readAsDataURL(audioBlob);
+  // Web Speech API SpeechRecognition doesn't support pre-recorded audio blobs
+  // This function is kept for compatibility but will show a message
+  console.warn("[STT] Web Speech API requires live microphone input");
+  if (btnMic) {
+    btnMic.classList.remove("processing");
+    btnMic.title = "Gravar Áudio";
+  }
+  alert("Gravação de arquivo não suportada. Use o microfone em tempo real clicando no botão do microfone.");
 }
 
 function sendTextMessageDirect(text) {
@@ -469,8 +431,9 @@ function initRecording() {
   var btnMic = document.getElementById("btnMic");
   if (!btnMic) return;
 
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    btnMic.title = "Gravação não suportada";
+  var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    btnMic.title = "SpeechRecognition não suportado";
     btnMic.disabled = true;
     return;
   }
@@ -485,45 +448,108 @@ function initRecording() {
 }
 
 function startRecording() {
-  navigator.mediaDevices.getUserMedia({ audio: true })
-    .then(function (stream) {
-      mediaRecorder = new MediaRecorder(stream);
-      recordedChunks = [];
+  var btnMic = document.getElementById("btnMic");
+  var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    alert("SpeechRecognition não suportado neste navegador");
+    return;
+  }
 
-      mediaRecorder.ondataavailable = function (e) {
-        if (e.data && e.data.size > 0) {
-          recordedChunks.push(e.data);
-        }
-      };
+  speechRecognition = new SpeechRecognition();
+  speechRecognition.lang = "pt-BR";
+  speechRecognition.interimResults = true;
+  speechRecognition.continuous = true;
+  speechRecognition.maxAlternatives = 1;
 
-      mediaRecorder.onstop = function () {
-        var blob = new Blob(recordedChunks, { type: "audio/webm" });
-        sendAudioMessage(blob);
-        stream.getTracks().forEach(function (track) { track.stop(); });
-      };
+  var finalTranscript = "";
+  var interimTranscript = "";
 
-      mediaRecorder.start();
-      isRecording = true;
-      var btnMic = document.getElementById("btnMic");
-      if (btnMic) {
-        btnMic.classList.add("recording");
-        btnMic.title = "Parar gravação";
+  speechRecognition.onstart = function () {
+    isRecording = true;
+    if (btnMic) {
+      btnMic.classList.add("recording");
+      btnMic.title = "Parar gravação";
+    }
+    console.log("[STT] Started listening");
+  };
+
+  speechRecognition.onresult = function (event) {
+    interimTranscript = "";
+    for (var i = event.resultIndex; i < event.results.length; i++) {
+      var transcript = event.results[i][0].transcript;
+      if (event.results[i].isFinal) {
+        finalTranscript += transcript + " ";
+      } else {
+        interimTranscript += transcript;
       }
-    })
-    .catch(function () {
-      alert("Erro ao acessar microfone");
-    });
+    }
+    // Update input field with live transcription
+    var inputField = document.getElementById("inputField");
+    if (inputField) {
+      inputField.value = (finalTranscript + interimTranscript).trim();
+    }
+  };
+
+  speechRecognition.onerror = function (event) {
+    console.error("[STT] Error:", event.error);
+    if (event.error === "no-speech" || event.error === "audio-capture") {
+      // Silently handle these common errors
+      return;
+    }
+    if (btnMic) {
+      btnMic.classList.remove("recording");
+      btnMic.title = "Gravar Áudio";
+    }
+    isRecording = false;
+    alert("Erro no reconhecimento de voz: " + event.error);
+  };
+
+  speechRecognition.onend = function () {
+    console.log("[STT] Ended listening");
+    if (isRecording) {
+      // If still recording (user didn't click stop), restart
+      if (speechRecognition) {
+        try {
+          speechRecognition.start();
+        } catch (e) {
+          // Ignore restart errors
+        }
+      }
+    }
+  };
+
+  try {
+    speechRecognition.start();
+  } catch (e) {
+    console.error("[STT] Failed to start:", e);
+    if (btnMic) {
+      btnMic.classList.remove("recording");
+      btnMic.title = "Gravar Áudio";
+    }
+    isRecording = false;
+    alert("Erro ao iniciar reconhecimento: " + e.message);
+  }
 }
 
 function stopRecording() {
-  if (mediaRecorder && mediaRecorder.state !== "inactive") {
-    mediaRecorder.stop();
-  }
   isRecording = false;
+  if (speechRecognition) {
+    try {
+      speechRecognition.stop();
+    } catch (e) {
+      console.warn("[STT] Error stopping:", e);
+    }
+    speechRecognition = null;
+  }
   var btnMic = document.getElementById("btnMic");
   if (btnMic) {
     btnMic.classList.remove("recording");
     btnMic.title = "Gravar Áudio";
+  }
+  // Send the final transcript
+  var inputField = document.getElementById("inputField");
+  if (inputField && inputField.value.trim()) {
+    sendTextMessage();
   }
 }
 
