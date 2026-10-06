@@ -1,13 +1,72 @@
 var chatPollingInterval = null;
 var currentSessionId = null;
-var speechRecognition = null;
+var mediaRecorder = null;
+var recordedChunks = [];
 var isRecording = false;
 
 var ACTIVE_SESSION_KEY = "hermes_active_session";
-var KOKORO_API_URL = ""; // Will be loaded from server config
 var activeAudio = null;
 var autoPlayEnabled = true; // Auto-play TTS after AI response
 var lastMessageCount = 0;
+var debugLogs = [];
+
+// Capture console.log for mobile debugging
+var originalLog = console.log;
+var originalError = console.error;
+var originalWarn = console.warn;
+
+console.log = function () {
+  var args = Array.prototype.slice.call(arguments);
+  var msg = args.map(function(a) { return typeof a === 'object' ? JSON.stringify(a) : a; }).join(' ');
+  debugLogs.push({ type: 'log', msg: msg, time: new Date().toLocaleTimeString() });
+  if (debugLogs.length > 50) debugLogs.shift();
+  originalLog.apply(console, arguments);
+  renderDebugPanel();
+};
+
+console.error = function () {
+  var args = Array.prototype.slice.call(arguments);
+  var msg = args.map(function(a) { return typeof a === 'object' ? JSON.stringify(a) : a; }).join(' ');
+  debugLogs.push({ type: 'error', msg: msg, time: new Date().toLocaleTimeString() });
+  if (debugLogs.length > 50) debugLogs.shift();
+  originalError.apply(console, arguments);
+  renderDebugPanel();
+};
+
+console.warn = function () {
+  var args = Array.prototype.slice.call(arguments);
+  var msg = args.map(function(a) { return typeof a === 'object' ? JSON.stringify(a) : a; }).join(' ');
+  debugLogs.push({ type: 'warn', msg: msg, time: new Date().toLocaleTimeString() });
+  if (debugLogs.length > 50) debugLogs.shift();
+  originalWarn.apply(console, arguments);
+  renderDebugPanel();
+};
+
+function renderDebugPanel() {
+  var panel = document.getElementById('debugPanel');
+  if (!panel) return;
+  panel.innerHTML = debugLogs.map(function(l) {
+    return '<div style="color:' + (l.type === 'error' ? '#f44' : l.type === 'warn' ? '#fa0' : '#8f8') + '">[' + l.time + '] ' + escapeHtml(l.msg) + '</div>';
+  }).join('');
+}
+
+function toggleDebugPanel() {
+  var panel = document.getElementById('debugPanel');
+  var btn = document.getElementById('debugToggle');
+  if (!panel || !btn) return;
+  if (panel.style.display === 'none') {
+    panel.style.display = 'block';
+    btn.textContent = '🐛 Hide Debug';
+  } else {
+    panel.style.display = 'none';
+    btn.textContent = '🐛 Show Debug';
+  }
+}
+
+function clearDebugPanel() {
+  debugLogs = [];
+  renderDebugPanel();
+}
 
 function getActiveSessionId() {
   if (currentSessionId) return currentSessionId;
@@ -71,96 +130,73 @@ if (!("classList" in document.documentElement)) {
   });
 }
 
-// Load Kokoro API URL from server config
-function loadKokoroConfig(callback) {
+function speakText(text, lang) {
+  if (!text || !text.trim()) return;
+
+  stopSpeaking(); // cancel any ongoing
+
+  // Try backend TTS first
   var xhr = new XMLHttpRequest();
-  xhr.open("GET", "/api/tts-config", true);
+  xhr.open("POST", "/api/tts", true);
+  xhr.setRequestHeader("Content-Type", "application/json");
   xhr.onreadystatechange = function () {
     if (xhr.readyState !== 4) return;
     if (xhr.status === 200) {
       try {
-        var config = JSON.parse(xhr.responseText);
-        KOKORO_API_URL = config.url || "";
-        autoPlayEnabled = config.autoPlay !== false;
-        console.log("[TTS] Kokoro API URL loaded:", KOKORO_API_URL);
+        var resp = JSON.parse(xhr.responseText);
+        if (resp.url) {
+          var audio = new Audio(resp.url);
+          audio.volume = 1.0;
+          audio.onended = function () {
+            activeAudio = null;
+          };
+          audio.onerror = function () {
+            console.warn("[TTS] Audio playback error, falling back to Web Speech");
+            fallbackToWebSpeech(text, lang);
+          };
+          audio.play();
+          activeAudio = audio;
+        } else {
+          console.warn("[TTS] No audio URL in response:", resp);
+          fallbackToWebSpeech(text, lang);
+        }
       } catch (e) {
-        console.warn("[TTS] Failed to parse TTS config:", e);
+        console.warn("[TTS] Failed to parse response:", e);
+        fallbackToWebSpeech(text, lang);
       }
     } else {
-      console.warn("[TTS] Could not load TTS config, status:", xhr.status);
-    }
-    if (callback) callback();
-  };
-  xhr.send();
-}
-
-function speakText(text, lang) {
-  if (!text || !text.trim()) return;
-  if (!KOKORO_API_URL) {
-    console.warn("[TTS] Kokoro API URL not configured");
-    return;
-  }
-
-  stopSpeaking(); // cancel any ongoing
-
-  var payload = {
-    voice_aliases: {},
-    model: "kokoro",
-    input: text,
-    voice: "pm_alex",
-    response_format: "mp3",
-    download_format: "mp3",
-    speed: 1,
-    stream: true,
-    return_download_link: false,
-    return_timing: false,
-    lang_code: "p",
-    volume_multiplier: 1,
-    normalization_options: {
-      normalize: true,
-      unit_normalization: false,
-      url_normalization: true,
-      email_normalization: true,
-      optional_pluralization_normalization: true,
-      phone_normalization: true,
-      caps_normalization: true,
-      replace_remaining_symbols: true,
-      remove_emoji: false
-    },
-    allow_voice_tags: false,
-    ssml: false
-  };
-
-  var xhr = new XMLHttpRequest();
-  xhr.open("POST", KOKORO_API_URL+"/audio/speech", true);
-  xhr.setRequestHeader("Content-Type", "application/json");
-  xhr.setRequestHeader("accept", "*/*");
-  xhr.responseType = "blob";
-  xhr.onload = function () {
-    if (xhr.status === 200 && xhr.response) {
-      var audioBlob = xhr.response;
-      var audioUrl = URL.createObjectURL(audioBlob);
-      var audio = new Audio(audioUrl);
-      audio.volume = 1.0;
-      audio.onended = function () {
-        URL.revokeObjectURL(audioUrl);
-        activeAudio = null;
-      };
-      audio.onerror = function () {
-        URL.revokeObjectURL(audioUrl);
-        console.warn("[TTS] Audio playback error");
-        activeAudio = null;
-      };
-      audio.play();
-      activeAudio = audio;
-    } else {
-      console.warn("[TTS] Failed to generate audio, status:", xhr.status);
+      console.warn("[TTS] Backend TTS failed (status:", xhr.status, "), falling back to Web Speech");
+      fallbackToWebSpeech(text, lang);
     }
   };
   xhr.onerror = function () {
-    console.warn("[TTS] Network error calling Kokoro API");
+    console.warn("[TTS] Network error calling backend TTS, falling back to Web Speech");
+    fallbackToWebSpeech(text, lang);
   };
-  xhr.send(JSON.stringify(payload));
+  xhr.send(JSON.stringify({ text: text, voice: "pm_alex", speed: 1 }));
+}
+
+function fallbackToWebSpeech(text, lang) {
+  if (!window.speechSynthesis) {
+    console.warn("[TTS] Web Speech API not available");
+    return;
+  }
+  try {
+    if (activeAudio) {
+      window.speechSynthesis.cancel();
+    }
+    var utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = lang || "pt-BR";
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
+    utterance.onend = function () { activeAudio = null; };
+    utterance.onerror = function () { activeAudio = null; };
+    activeAudio = utterance;
+    window.speechSynthesis.speak(utterance);
+  } catch (e) {
+    console.warn("[TTS] Web Speech fallback error:", e);
+  }
 }
 
 function stopSpeaking() {
@@ -340,7 +376,7 @@ function startPolling(sessionId) {
         var aiMessages = tempDiv.querySelectorAll(".ai-message");
         var currentMessageCount = aiMessages.length;
         
-        if (currentMessageCount > lastMessageCount && autoPlayEnabled && KOKORO_API_URL) {
+        if (currentMessageCount > lastMessageCount && autoPlayEnabled) {
           // New AI message detected, get the last one's text
           var lastAIMessage = aiMessages[aiMessages.length - 1];
           var outputText = lastAIMessage.querySelector(".ai-output p");
@@ -385,23 +421,6 @@ function sendTextMessage() {
   sendTextMessageDirect(text);
 }
 
-function sendAudioMessage(audioBlob) {
-  var btnMic = document.getElementById("btnMic");
-  if (btnMic) {
-    btnMic.classList.add("processing");
-    btnMic.title = "Transcrevendo...";
-  }
-
-  // Web Speech API SpeechRecognition doesn't support pre-recorded audio blobs
-  // This function is kept for compatibility but will show a message
-  console.warn("[STT] Web Speech API requires live microphone input");
-  if (btnMic) {
-    btnMic.classList.remove("processing");
-    btnMic.title = "Gravar Áudio";
-  }
-  alert("Gravação de arquivo não suportada. Use o microfone em tempo real clicando no botão do microfone.");
-}
-
 function sendTextMessageDirect(text) {
   var inputField = document.getElementById("inputField");
   if (!text) return;
@@ -431,9 +450,8 @@ function initRecording() {
   var btnMic = document.getElementById("btnMic");
   if (!btnMic) return;
 
-  var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) {
-    btnMic.title = "SpeechRecognition não suportado";
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    btnMic.title = "Gravação não suportada";
     btnMic.disabled = true;
     return;
   }
@@ -449,108 +467,151 @@ function initRecording() {
 
 function startRecording() {
   var btnMic = document.getElementById("btnMic");
-  var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) {
-    alert("SpeechRecognition não suportado neste navegador");
-    return;
-  }
-
-  speechRecognition = new SpeechRecognition();
-  speechRecognition.lang = "pt-BR";
-  speechRecognition.interimResults = true;
-  speechRecognition.continuous = true;
-  speechRecognition.maxAlternatives = 1;
-
-  var finalTranscript = "";
-  var interimTranscript = "";
-
-  speechRecognition.onstart = function () {
-    isRecording = true;
-    if (btnMic) {
-      btnMic.classList.add("recording");
-      btnMic.title = "Parar gravação";
-    }
-    console.log("[STT] Started listening");
-  };
-
-  speechRecognition.onresult = function (event) {
-    interimTranscript = "";
-    for (var i = event.resultIndex; i < event.results.length; i++) {
-      var transcript = event.results[i][0].transcript;
-      if (event.results[i].isFinal) {
-        finalTranscript += transcript + " ";
-      } else {
-        interimTranscript += transcript;
+  
+  navigator.mediaDevices.getUserMedia({ audio: true })
+    .then(function (stream) {
+      // Use a widely supported MIME type
+      var mimeType = "audio/webm";
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = "audio/mp4";
       }
-    }
-    // Update input field with live transcription
-    var inputField = document.getElementById("inputField");
-    if (inputField) {
-      inputField.value = (finalTranscript + interimTranscript).trim();
-    }
-  };
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = "audio/3gpp";
+      }
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = "audio/amr";
+      }
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = ""; // Let browser decide
+      }
+      
+      console.log("[STT] Supported mimeTypes:", {
+        webm: MediaRecorder.isTypeSupported("audio/webm"),
+        mp4: MediaRecorder.isTypeSupported("audio/mp4"),
+        "3gpp": MediaRecorder.isTypeSupported("audio/3gpp"),
+        amr: MediaRecorder.isTypeSupported("audio/amr"),
+        ogg: MediaRecorder.isTypeSupported("audio/ogg"),
+        selected: mimeType
+      });
 
-  speechRecognition.onerror = function (event) {
-    console.error("[STT] Error:", event.error);
-    if (event.error === "no-speech" || event.error === "audio-capture") {
-      // Silently handle these common errors
-      return;
-    }
-    if (btnMic) {
-      btnMic.classList.remove("recording");
-      btnMic.title = "Gravar Áudio";
-    }
-    isRecording = false;
-    alert("Erro no reconhecimento de voz: " + event.error);
-  };
+      mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType: mimeType } : undefined);
+      recordedChunks = [];
 
-  speechRecognition.onend = function () {
-    console.log("[STT] Ended listening");
-    if (isRecording) {
-      // If still recording (user didn't click stop), restart
-      if (speechRecognition) {
-        try {
-          speechRecognition.start();
-        } catch (e) {
-          // Ignore restart errors
+      mediaRecorder.ondataavailable = function (e) {
+        if (e.data && e.data.size > 0) {
+          recordedChunks.push(e.data);
         }
-      }
-    }
-  };
+      };
 
-  try {
-    speechRecognition.start();
-  } catch (e) {
-    console.error("[STT] Failed to start:", e);
-    if (btnMic) {
-      btnMic.classList.remove("recording");
-      btnMic.title = "Gravar Áudio";
-    }
-    isRecording = false;
-    alert("Erro ao iniciar reconhecimento: " + e.message);
-  }
+      mediaRecorder.onstop = function () {
+        var blob = new Blob(recordedChunks, { type: mimeType || "audio/webm" });
+        console.log("[STT] Recording complete:", {
+          blobSize: blob.size,
+          blobType: blob.type,
+          mimeType: mimeType,
+          chunks: recordedChunks.length
+        });
+        uploadAudioForSTT(blob, mimeType || blob.type);
+        stream.getTracks().forEach(function (track) { track.stop(); });
+      };
+
+      mediaRecorder.start(100); // Collect data every 100ms
+      isRecording = true;
+      if (btnMic) {
+        btnMic.classList.add("recording");
+        btnMic.title = "Parar gravação";
+      }
+      console.log("[STT] Started recording with mimeType:", mimeType);
+    })
+    .catch(function (err) {
+      console.error("[STT] Microphone access error:", err);
+      alert("Erro ao acessar microfone: " + err.message);
+    });
 }
 
 function stopRecording() {
-  isRecording = false;
-  if (speechRecognition) {
-    try {
-      speechRecognition.stop();
-    } catch (e) {
-      console.warn("[STT] Error stopping:", e);
-    }
-    speechRecognition = null;
+  if (mediaRecorder && mediaRecorder.state !== "inactive") {
+    mediaRecorder.stop();
   }
+  isRecording = false;
   var btnMic = document.getElementById("btnMic");
   if (btnMic) {
     btnMic.classList.remove("recording");
     btnMic.title = "Gravar Áudio";
   }
-  // Send the final transcript
-  var inputField = document.getElementById("inputField");
-  if (inputField && inputField.value.trim()) {
-    sendTextMessage();
+}
+
+function uploadAudioForSTT(audioBlob, recordedMimeType) {
+  var btnMic = document.getElementById("btnMic");
+  if (btnMic) {
+    btnMic.classList.add("processing");
+    btnMic.title = "Enviando áudio...";
   }
+
+  console.log("[UPLOAD] Sending audio:", {
+    blobSize: audioBlob.size,
+    blobType: audioBlob.type,
+    recordedMimeType: recordedMimeType
+  });
+
+  var formData = new FormData();
+  formData.append("audio", audioBlob, "recording.webm");
+
+  var xhr = new XMLHttpRequest();
+  xhr.open("POST", "/api/upload-audio", true);
+  xhr.onreadystatechange = function () {
+    if (xhr.readyState !== 4) return;
+    if (btnMic) {
+      btnMic.classList.remove("processing");
+      btnMic.title = "Gravar Áudio";
+    }
+    if (xhr.status === 200) {
+      try {
+        var resp = JSON.parse(xhr.responseText);
+        if (resp.audioPath) {
+          sendAudioMessageToChat(resp.audioPath, resp.fileName, resp.transcript || "");
+        } else {
+          console.error("[UPLOAD] No audioPath in response:", resp);
+          alert("Erro: caminho do áudio não retornado");
+        }
+      } catch (e) {
+        console.error("[UPLOAD] Failed to parse response:", e);
+      }
+    } else {
+      console.error("[UPLOAD] Upload failed:", xhr.status, xhr.responseText);
+      alert("Erro no envio do áudio: " + xhr.status);
+    }
+  };
+  xhr.onerror = function () {
+    if (btnMic) {
+      btnMic.classList.remove("processing");
+      btnMic.title = "Gravar Áudio";
+    }
+    console.error("[UPLOAD] Network error");
+    alert("Erro de rede ao enviar áudio");
+  };
+  xhr.send(formData);
+}
+
+function sendAudioMessageToChat(audioPath, fileName, transcript) {
+  // Just send to backend - don't add to DOM yet, let backend handle it
+  // Use transcript as the message if available, otherwise use the label
+  var messageText = transcript && transcript.trim() ? transcript : "🎵 Áudio gravado: " + fileName;
+  
+  ensureSessionId(function (sessionId) {
+    httpPost("/chat", JSON.stringify({ 
+      input: messageText,
+      sessionId: sessionId,
+      audioPath: audioPath,
+      audioFileName: fileName,
+      audioTranscript: transcript
+    }), function (resp) {
+      if (resp && resp.sessionId) {
+        setActiveSessionId(resp.sessionId);
+        startPolling(resp.sessionId);
+      }
+    });
+  });
 }
 
 function initChat() {
@@ -559,6 +620,21 @@ function initChat() {
   var streamContent = document.getElementById("streamContent");
 
   if (!inputField || !btnSend || !streamContent) return;
+
+  // Add debug panel toggle button
+  var debugBtn = document.createElement('button');
+  debugBtn.id = 'debugToggle';
+  debugBtn.textContent = '🐛 Show Debug';
+  debugBtn.style.cssText = 'position:fixed;top:10px;right:10px;z-index:9999;padding:8px 12px;background:#333;color:#fff;border:none;border-radius:4px;font-size:12px;';
+  debugBtn.onclick = toggleDebugPanel;
+  document.body.appendChild(debugBtn);
+
+  // Add debug panel
+  var debugPanel = document.createElement('div');
+  debugPanel.id = 'debugPanel';
+  debugPanel.style.cssText = 'position:fixed;top:45px;right:10px;width:350px;max-height:300px;overflow-y:auto;background:#111;color:#0f0;border:1px solid #333;border-radius:4px;padding:10px;font-family:monospace;font-size:11px;z-index:9998;display:none;';
+  debugPanel.innerHTML = '<div style="display:flex;justify-content:space-between;margin-bottom:5px;"><span>Debug Log</span><button onclick="clearDebugPanel()" style="background:none;border:none;color:#f44;cursor:pointer;">Clear</button></div>';
+  document.body.appendChild(debugPanel);
 
   btnSend.addEventListener("click", sendTextMessage);
   inputField.addEventListener("keydown", function (e) {
@@ -594,14 +670,12 @@ function initChat() {
 
 function escapeHtml(text) {
   if (!text) return "";
-  var map = { "&": "&", "<": "<", ">": ">", '"': "&quot;", "'": "&#039;" };
+  var map = { "&": "&", "<": "<", ">": ">", '"': "", "'": "&#039;" };
   return text.replace(/[&<>"']/g, function (c) { return map[c]; });
 }
 
 window.addEventListener("load", function () {
   if (window.initSidebar) initSidebar();
-  loadKokoroConfig(function () {
-    loadSessions();
-    initChat();
-  });
+  loadSessions();
+  initChat();
 });
