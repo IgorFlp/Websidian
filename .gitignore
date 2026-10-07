@@ -6,3 +6,4 @@ cookies.txt
 server/node_modules/*
 node_modules/*
 public/audio
+public/recordings/*
