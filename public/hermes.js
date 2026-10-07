@@ -207,10 +207,49 @@ function stopSpeaking() {
   }
 }
 
+function playVoiceMessage(btn) {
+  var audioId = btn.getAttribute("data-audio-id");
+  if (!audioId) return;
+  var audio = new Audio("/audio/" + audioId);
+  audio.volume = 1.0;
+  audio.play().catch(function () { console.warn("[voice] Playback blocked"); });
+}
+
 function playTTSForElement(btn) {
   var text = btn.getAttribute("data-tts-text");
   if (text) {
     speakText(text, "pt-BR");
+  }
+}
+
+function playTTSFromOutput(btn) {
+  var msg = btn.closest(".ai-message");
+  if (!msg) return;
+  var output = msg.querySelector(".ai-output");
+  if (!output) return;
+  
+  // Clone to avoid mutating original
+  var clone = output.cloneNode(true);
+  
+  // Remove code blocks with programming languages
+  var codeBlocks = clone.querySelectorAll("pre.code-containers code[class*='language-']");
+  for (var i = 0; i < codeBlocks.length; i++) {
+    var pre = codeBlocks[i].closest("pre");
+    if (pre) pre.remove();
+  }
+  
+  // Also remove any remaining pre.code-containers (fallback)
+  var allCodeBlocks = clone.querySelectorAll("pre.code-containers");
+  for (var j = 0; j < allCodeBlocks.length; j++) {
+    allCodeBlocks[j].remove();
+  }
+  
+  // Get clean text
+  var cleanText = clone.textContent || clone.innerText || "";
+  cleanText = cleanText.trim();
+  
+  if (cleanText) {
+    speakText(cleanText, "pt-BR");
   }
 }
 
@@ -323,6 +362,14 @@ function attachSessionClickHandlers() {
     var sessionId = item.getAttribute("data-session-id");
     if (sessionId) {
       console.log("[hermes] Session selected:", sessionId);
+      // Atualiza classe active nos cards
+      var allItems = document.querySelectorAll(".session-item");
+      for (var i = 0; i < allItems.length; i++) {
+        var card = allItems[i].querySelector(".session-card");
+        if (card) card.classList.remove("active");
+      }
+      var card = item.querySelector(".session-card");
+      if (card) card.classList.add("active");
       openSession(sessionId);
     }
   };
@@ -369,7 +416,7 @@ function startPolling(sessionId) {
   chatPollingInterval = setInterval(function () {
     httpGet("/messages/" + sessionId, function (html) {
       var streamContent = document.getElementById("streamContent");
-      if (streamContent && html) {
+        if (streamContent && html) {
         // Check for new AI messages before updating HTML
         var tempDiv = document.createElement("div");
         tempDiv.innerHTML = html;
@@ -377,11 +424,22 @@ function startPolling(sessionId) {
         var currentMessageCount = aiMessages.length;
         
         if (currentMessageCount > lastMessageCount && autoPlayEnabled) {
-          // New AI message detected, get the last one's text
           var lastAIMessage = aiMessages[aiMessages.length - 1];
-          var outputText = lastAIMessage.querySelector(".ai-output p");
+          var outputText = lastAIMessage ? lastAIMessage.querySelector(".ai-output p") : null;
+          // Apply slide-in animation to newest AI message (task 5.3)
+          setTimeout(function () {
+            var streamContentEl = document.getElementById("streamContent");
+            if (!streamContentEl) return;
+            var allAIMessages = streamContentEl.querySelectorAll(".ai-message");
+            if (allAIMessages.length > 0) {
+              var newest = allAIMessages[allAIMessages.length - 1];
+              newest.classList.add("animate-slide-in");
+              newest.addEventListener("animationend", function () {
+                newest.classList.remove("animate-slide-in");
+              }, { once: true });
+            }
+          }, 50);
           if (outputText && outputText.textContent.trim()) {
-            // Small delay to ensure DOM is updated
             setTimeout(function () {
               speakText(outputText.textContent.trim(), "pt-BR");
             }, 100);
@@ -448,7 +506,9 @@ function sendTextMessageDirect(text) {
 
 function initRecording() {
   var btnMic = document.getElementById("btnMic");
-  if (!btnMic) return;
+  var micIcon = document.getElementById("micIcon");
+  var micDuration = document.getElementById("micDuration");
+  if (!btnMic || !micIcon || !micDuration) return;
 
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     btnMic.title = "Gravação não suportada";
@@ -456,17 +516,82 @@ function initRecording() {
     return;
   }
 
-  btnMic.addEventListener("click", function () {
+  // Click to start/stop recording
+  var recordingStartTime = 0;
+  var durationInterval = null;
+
+  function updateDuration() {
+    var elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+    var mins = Math.floor(elapsed / 60);
+    var secs = elapsed % 60;
+    var minsStr = mins < 10 ? "0" + mins : String(mins);
+    var secsStr = secs < 10 ? "0" + secs : String(secs);
+    micDuration.textContent = minsStr + ":" + secsStr;
+  }
+
+  function setRecordingUI(recording) {
+    if (recording) {
+      btnMic.style.background = "rgba(244, 67, 54, 0.2)";
+      btnMic.style.borderColor = "#f44336";
+      btnMic.style.color = "#f44336";
+      btnMic.title = "Parar gravação";
+      micIcon.innerHTML = '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>'; // pause icon
+      micDuration.style.display = "inline-block";
+      recordingStartTime = Date.now();
+      micDuration.textContent = "00:00";
+      durationInterval = setInterval(updateDuration, 500);
+    } else {
+      btnMic.style.background = "rgba(208,188,255,0.15)";
+      btnMic.style.borderColor = "rgba(208,188,255,0.4)";
+      btnMic.style.color = "#d0bcff";
+      btnMic.title = "Gravar Áudio";
+      micIcon.innerHTML = '<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/>'; // mic icon
+      if (durationInterval) {
+        clearInterval(durationInterval);
+        durationInterval = null;
+      }
+      micDuration.style.display = "none";
+      micDuration.textContent = "00:00";
+    }
+  }
+
+  btnMic.addEventListener("click", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
     if (isRecording) {
       stopRecording();
     } else {
       startRecording();
     }
-  });
+  }, { passive: false });
+
+  // Also support touch for old Android
+  btnMic.addEventListener("touchend", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  }, { passive: false });
+
+  // Override startRecording/stopRecording to update UI
+  var originalStartRecording = window.startRecording;
+  var originalStopRecording = window.stopRecording;
+  window.startRecording = function () {
+    if (originalStartRecording) originalStartRecording();
+    setRecordingUI(true);
+  };
+  window.stopRecording = function () {
+    if (originalStopRecording) originalStopRecording();
+    setRecordingUI(false);
+  };
 }
 
 function startRecording() {
   var btnMic = document.getElementById("btnMic");
+  var durationEl = document.getElementById("micDuration");
   
   navigator.mediaDevices.getUserMedia({ audio: true })
     .then(function (stream) {
@@ -625,15 +750,16 @@ function initChat() {
   var debugBtn = document.createElement('button');
   debugBtn.id = 'debugToggle';
   debugBtn.textContent = '🐛 Show Debug';
-  debugBtn.style.cssText = 'position:fixed;top:10px;right:10px;z-index:9999;padding:8px 12px;background:#333;color:#fff;border:none;border-radius:4px;font-size:12px;';
+  debugBtn.style.cssText = 'position:fixed;top:70px;right:10px;z-index:9999;padding:8px 12px;background:#333;color:#fff;border:none;border-radius:4px;font-size:12px;';
   debugBtn.onclick = toggleDebugPanel;
   document.body.appendChild(debugBtn);
 
   // Add debug panel
   var debugPanel = document.createElement('div');
   debugPanel.id = 'debugPanel';
-  debugPanel.style.cssText = 'position:fixed;top:45px;right:10px;width:350px;max-height:300px;overflow-y:auto;background:#111;color:#0f0;border:1px solid #333;border-radius:4px;padding:10px;font-family:monospace;font-size:11px;z-index:9998;display:none;';
+  debugPanel.style.cssText = 'position:fixed;top:105px;right:10px;width:350px;max-height:300px;overflow-y:auto;background:#111;color:#0f0;border:1px solid #333;border-radius:4px;padding:10px;font-family:monospace;font-size:11px;z-index:9998;display:none;';
   debugPanel.innerHTML = '<div style="display:flex;justify-content:space-between;margin-bottom:5px;"><span>Debug Log</span><button onclick="clearDebugPanel()" style="background:none;border:none;color:#f44;cursor:pointer;">Clear</button></div>';
+ 
   document.body.appendChild(debugPanel);
 
   btnSend.addEventListener("click", sendTextMessage);
@@ -641,17 +767,32 @@ function initChat() {
     if (e.key === "Enter") sendTextMessage();
   });
 
+  var btnNewSession = document.getElementById("btnNewSession");
+  if (btnNewSession) {
+    btnNewSession.addEventListener("click", function () {
+      currentSessionId = null;
+      localStorage.removeItem(ACTIVE_SESSION_KEY);
+      var streamContent = document.getElementById("streamContent");
+      if (streamContent) streamContent.innerHTML = "";
+      lastMessageCount = 0;
+      loadSessions();
+    });
+  }
+
   initRecording();
 
   streamContent.addEventListener("click", function (e) {
     var btn = e.target.closest(".reasoning-toggle");
     if (btn) {
-      var icon = btn.querySelector(".reasoning-toggle-icon");
-      var container = btn.nextElementSibling;
-      if (container && container.classList.contains("reasoning-content")) {
-        container.classList.toggle("collapsed");
-        container.classList.toggle("expanded");
-        icon.classList.toggle("expanded");
+      var msg = btn.closest(".ai-message");
+      if (msg) {
+        var container = msg.querySelector(".reasoning-content");
+        if (container) {
+          container.classList.toggle("collapsed");
+          container.classList.toggle("expanded");
+        }
+        var icon = msg.querySelector(".icon");
+        if (icon) icon.classList.toggle("expanded");
       }
       return;
     }
@@ -674,8 +815,60 @@ function escapeHtml(text) {
   return text.replace(/[&<>"']/g, function (c) { return map[c]; });
 }
 
+var deleteModalOpen = false;
+var sessionToDelete = null;
+
+function deleteSession(sessionId) {
+  sessionToDelete = sessionId;
+  var modal = document.getElementById("deleteModal");
+  if (modal) { modal.classList.remove("hidden"); modal.classList.add("flex"); }
+  deleteModalOpen = true;
+}
+
+function closeDeleteModal() {
+  var modal = document.getElementById("deleteModal");
+  if (modal) { modal.classList.add("hidden"); modal.classList.remove("flex"); }
+  deleteModalOpen = false;
+  sessionToDelete = null;
+}
+
+function confirmDeleteSession() {
+  if (!sessionToDelete) return;
+  var xhr = new XMLHttpRequest();
+  xhr.open("DELETE", "/sessions/" + sessionToDelete, true);
+  xhr.onreadystatechange = function () {
+    if (xhr.readyState !== 4) return;
+    if (xhr.status === 200 || xhr.status === 204) {
+      loadSessions();
+      if (currentSessionId === sessionToDelete) {
+        currentSessionId = null;
+        localStorage.removeItem(ACTIVE_SESSION_KEY);
+        var streamContent = document.getElementById("streamContent");
+        if (streamContent) streamContent.innerHTML = "";
+      }
+    } else {
+      console.error("[delete] Failed:", xhr.status);
+    }
+    closeDeleteModal();
+  };
+  xhr.send();
+}
+
 window.addEventListener("load", function () {
   if (window.initSidebar) initSidebar();
   loadSessions();
   initChat();
+
+  // Modal handlers (task 4.3, 4.7)
+  var confirmBtn = document.getElementById("deleteConfirmBtn");
+  var cancelBtn = document.getElementById("deleteCancelBtn");
+  if (confirmBtn) confirmBtn.addEventListener("click", confirmDeleteSession);
+  if (cancelBtn) cancelBtn.addEventListener("click", closeDeleteModal);
+
+  document.addEventListener("keydown", function (e) {
+    if (deleteModalOpen) {
+      if (e.key === "Escape") { e.preventDefault(); closeDeleteModal(); }
+      if (e.key === "Enter") { e.preventDefault(); confirmDeleteSession(); }
+    }
+  });
 });
