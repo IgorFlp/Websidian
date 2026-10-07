@@ -261,6 +261,85 @@ components:
           format: "int64"
         duration:
           type: "integer"
+    TTSRequest:
+      type: "object"
+      required: ["text"]
+      properties:
+        text:
+          type: "string"
+          description: "Text to convert to speech"
+        voice:
+          type: "string"
+          description: "Voice to use (e.g., pm_alex, pf_dora, pm_santa)"
+          default: "pm_alex"
+        speed:
+          type: "number"
+          description: "Speech speed"
+          default: 1
+    TTSResponse:
+      type: "object"
+      properties:
+        url:
+          type: "string"
+          description: "URL to access the generated audio"
+        text:
+          type: "string"
+          description: "Original text (truncated)"
+    STTRequest:
+      type: "object"
+      required: ["audio"]
+      properties:
+        audio:
+          type: "string"
+          format: "binary"
+          description: "Audio file to transcribe"
+        model:
+          type: "string"
+          default: "Systran/faster-whisper-large-v3"
+        language:
+          type: "string"
+          default: "pt"
+        response_format:
+          type: "string"
+          default: "json"
+        temperature:
+          type: "number"
+          default: 0.3
+        vad_filter:
+          type: "boolean"
+          default: true
+    STTResponse:
+      type: "object"
+      properties:
+        text:
+          type: "string"
+          description: "Transcribed text"
+        segments:
+          type: "array"
+          items:
+            type: "object"
+    UploadAudioResponse:
+      type: "object"
+      properties:
+        audioPath:
+          type: "string"
+          description: "Server path to uploaded audio"
+        fileName:
+          type: "string"
+          description: "Original filename"
+        size:
+          type: "integer"
+          description: "File size in bytes"
+        mimetype:
+          type: "string"
+          description: "MIME type"
+        transcript:
+          type: "string"
+          description: "Transcribed text"
+        segments:
+          type: "array"
+          items:
+            type: "object"
     ChatRequest:
       type: "object"
       required: ["input"]
@@ -931,3 +1010,80 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+
+  /api/tts:
+    post:
+      summary: Generate TTS audio using speaches API
+      tags: [Audio]
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TTSRequest"
+      responses:
+        "200":
+          description: TTS audio generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TTSResponse"
+        "400":
+          description: Text is required
+        "500":
+          description: TTS generation failed
+
+  /api/stt:
+    post:
+      summary: Transcribe audio using speaches API (faster-whisper)
+      tags: [Audio]
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/STTRequest"
+      responses:
+        "200":
+          description: Transcription result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/STTResponse"
+        "400":
+          description: No audio file provided
+        "500":
+          description: STT failed
+
+  /api/upload-audio:
+    post:
+      summary: Upload recorded audio for STT processing
+      tags: [Audio]
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                audio:
+                  type: string
+                  format: binary
+                  description: Audio file to upload
+      responses:
+        "200":
+          description: Audio uploaded and transcribed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadAudioResponse"
+        "400":
+          description: No audio file provided
+        "500":
+          description: Server error

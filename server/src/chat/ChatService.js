@@ -63,7 +63,7 @@ export class ChatService {
     this.hermesClient = getHermesClient();
   }
 
-  async processChat(input, sessionId = null) {
+  async processChat(input, sessionId = null, audioPath = null, audioFileName = null, audioTranscript = null) {
     if (!input || typeof input !== "string") {
       throw new Error("Input is required and must be a string");
     }
@@ -84,22 +84,30 @@ export class ChatService {
     htmlRepository.init(currentSessionId);
     htmlRepository.setStreaming(currentSessionId, true);
 
-    const isAudioFile = input.startsWith("/tmp/") || input.startsWith(os.tmpdir());
+    const isAudioFile = audioPath && (audioPath.startsWith("/tmp/") || audioPath.startsWith(os.tmpdir()) || audioPath.includes("public/recordings"));
 
     if (isAudioFile) {
       const id = randomUUID().slice(0, 8);
       const managedFileName = `hermes-api-${id}.webm`;
       const managedPath = path.join(os.tmpdir(), "hermes-api-audio", managedFileName);
       if (!fs.existsSync(path.dirname(managedPath))) fs.mkdirSync(path.dirname(managedPath), { recursive: true });
-      fs.copyFileSync(input, managedPath);
-      try { fs.unlinkSync(input); } catch (e) { /* ignore */ }
+      fs.copyFileSync(audioPath, managedPath);
+      try { fs.unlinkSync(audioPath); } catch (e) { /* ignore */ }
+
+      const displayName = audioFileName || managedFileName;
+      const audioUrl = `/api/audio-file?path=${encodeURIComponent(managedPath)}`;
+
+      // Use transcript as the actual message content if available
+      const messageText = audioTranscript && audioTranscript.trim() 
+        ? audioTranscript 
+        : `🎵 Áudio gravado: ${displayName}`;
 
       const messageData = {
         id: `msg-${Date.now()}`,
         isAI: false,
-        text: "Áudio enviado",
+        text: messageText,
         timestamp: Date.now(),
-        audio: { id, url: `/audio/${id}`, text: "Áudio enviado", duration: 0 },
+        audio: { id, url: audioUrl, text: displayName, duration: 0 },
         reasoningText: null,
         outputText: null,
         responseTime: null,
@@ -107,6 +115,42 @@ export class ChatService {
 
       htmlRepository.addMessage(currentSessionId, messageData);
       htmlRepository.setStreaming(currentSessionId, false);
+
+      // If we have transcript, send it to Hermes as the actual message
+      if (audioTranscript && audioTranscript.trim()) {
+        let hermesResponse;
+        try {
+          hermesResponse = await this.hermesClient.chat(currentSessionId, audioTranscript, SYSTEM_PROMPT);
+        } catch (err) {
+          if (err.status === 404) {
+            throw { status: 404, message: "Session not found" };
+          }
+          throw { status: 500, message: `Hermes API error: ${err.message}` };
+        }
+
+        const { text, reasoningText, outputText, responseTime } = parseHermesResponse(hermesResponse);
+
+        // Add AI response to history
+        const aiMessageData = {
+          id: `msg-${Date.now()}`,
+          isAI: true,
+          text,
+          timestamp: Date.now(),
+          audio: null,
+          reasoningText,
+          outputText,
+          responseTime,
+        };
+
+        htmlRepository.addMessage(currentSessionId, aiMessageData);
+
+        return {
+          sessionId: currentSessionId,
+          html: htmlRepository.buildHtml(currentSessionId, this.htmlRenderer),
+          audio: [],
+          streaming: false,
+        };
+      }
 
       return {
         sessionId: currentSessionId,

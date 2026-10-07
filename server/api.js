@@ -13,6 +13,7 @@ import os from "os";
 import session from "express-session";
 import swaggerUi from "swagger-ui-express";
 import yaml from "yaml";
+import multer from "multer";
 import { getHermesClient } from "./src/hermes/HermesClient.js";
 import { ChatService } from "./src/chat/ChatService.js";
 import { SessionsService } from "./src/sessions/SessionsService.js";
@@ -22,6 +23,17 @@ import { htmlRenderer } from "./src/html/HTMLRenderer.js";
 import { htmlRepository } from "./src/html/HTMLRepository.js";
 
 const app = express();
+
+const upload = multer({ 
+  storage: multer.diskStorage({
+    destination: path.join(__dirname, "..", "public", "recordings"),
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname) || ".webm";
+      const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`;
+      cb(null, uniqueName);
+    }
+  })
+});
 
 // Load Swagger spec from YAML file
 const swaggerFile = path.join(__dirname, "swagger.yaml");
@@ -505,6 +517,7 @@ app.get("/api/tasks", authApi, (req, res) => {
  */
 app.get("/api/file-content", authApi, (req, res) => {
   const relPath = req.query.path;
+  const vaultIndex = req.query.vault != 'undefined'? req.query.vault : 0
   const safePath = path.normalize(relPath).replace(/^(\.\.(\/|\\|$))+/, "");
   const fullPath = path.join(VAULT.split(',').at(vaultIndex), safePath);
 
@@ -1548,22 +1561,408 @@ app.get("/audio/:id", authApi, logHermesRequest, (req, res) => {
   }
 });
 
-// Graceful shutdown
-process.on("SIGTERM", async () => {
-  console.log("SIGTERM received, shutting down gracefully...");
-  audioFileManager.clear();
-  process.exit(0);
+// Startup cleanup: remove old audio files from public/audio and data/recordings
+function cleanupAudioDirs() {
+  const PUBLIC_DIR = path.join(__dirname, "..", "public");
+  const AUDIOS_DIR = path.join(PUBLIC_DIR, "audio");
+  const RECORDINGS_DIR = path.join(__dirname, "..", "public", "recordings");
+  const MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
+  const now = Date.now();
+
+  [AUDIOS_DIR, RECORDINGS_DIR].forEach(dir => {
+    if (!fs.existsSync(dir)) return;
+    try {
+      const files = fs.readdirSync(dir);
+      for (const file of files) {
+        const filePath = path.join(dir, file);
+        try {
+          const stats = fs.statSync(filePath);
+          if (now - stats.mtimeMs > MAX_AGE_MS) {
+            fs.unlinkSync(filePath);
+            console.log("[CLEANUP] Removed old file:", filePath);
+          }
+        } catch (e) {
+          console.warn("[CLEANUP] Failed to check/remove:", filePath, e.message);
+        }
+      }
+    } catch (e) {
+      console.warn("[CLEANUP] Failed to read dir:", dir, e.message);
+    }
+  });
+}
+
+// Run cleanup on startup
+cleanupAudioDirs();
+
+/**
+ * @swagger
+ * /api/tts:
+ *   post:
+ *     summary: Generate TTS audio using speaches API
+ *     tags: [Audio]
+ *     security:
+ *       - sessionAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               text:
+ *                 type: string
+ *                 description: Text to convert to speech
+ *               voice:
+ *                 type: string
+ *                 description: Voice to use (e.g., pm_alex, pf_dora, pm_santa)
+ *                 default: pm_alex
+ *               speed:
+ *                 type: number
+ *                 description: Speech speed
+ *                 default: 1
+ *     responses:
+ *       200:
+ *         description: TTS audio generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 url:
+ *                   type: string
+ *                   description: URL to access the generated audio
+ *                 text:
+ *                   type: string
+ *                   description: Original text (truncated)
+ *       400:
+ *         description: Text is required
+ *       500:
+ *         description: TTS generation failed
+ */
+// POST /api/tts - Generate TTS using speaches API, save to public/audio
+app.post("/api/tts", authApi, async (req, res) => {
+  try {
+    const { text, voice = "pm_alex", speed = 1 } = req.body;
+    
+    if (!text || !text.trim()) {
+      return res.status(400).json({ error: "Text is required" });
+    }
+
+    const speachesUrl = process.env.SPEACHES_API_URL || "localhost:8000";
+    const apiKey = process.env.SPEACHES_API_KEY || "";
+    
+    const payload = {
+      model: "speaches-ai/Kokoro-82M-v1.0-ONNX",
+      input: text,
+      voice: voice,
+      response_format: "mp3",
+      speed: speed
+    };
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => {
+      console.error("[TTS] Request timeout after 30s");
+      controller.abort();
+    }, 30000);
+
+    const fullUrl = `${speachesUrl}/v1/audio/speech`;
+    console.log("[TTS] Calling speaches API:", fullUrl);
+
+    let response;
+    try {
+      response = await fetch(fullUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "accept": "*/*",
+          "Authorization": `Bearer ${apiKey}`
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+    } catch (fetchErr) {
+      clearTimeout(timeout);
+      if (fetchErr.name === "AbortError") {
+        console.error("[TTS] Request aborted (timeout or manual abort)");
+        return res.status(504).json({ error: "TTS request timeout" });
+      }
+      console.error("[TTS] Fetch error:", fetchErr.message);
+      return res.status(502).json({ error: "TTS service unreachable" });
+    }
+
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => "");
+      console.error("[TTS] speaches API error:", response.status, response.statusText, errText);
+      return res.status(502).json({ error: "TTS generation failed: " + response.status });
+    }
+
+    const audioBuffer = await response.arrayBuffer();
+    const audioData = Buffer.from(audioBuffer);
+
+    // Save to public/audio
+    const PUBLIC_DIR = path.join(__dirname, "..", "public");
+    const AUDIOS_DIR = path.join(PUBLIC_DIR, "audio");
+    if (!fs.existsSync(AUDIOS_DIR)) {
+      fs.mkdirSync(AUDIOS_DIR, { recursive: true });
+    }
+
+    const fileName = `tts-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.mp3`;
+    const filePath = path.join(AUDIOS_DIR, fileName);
+    fs.writeFileSync(filePath, audioData);
+
+    const audioUrl = `/audio/${fileName}`;
+    console.log("[TTS] Generated:", audioUrl);
+
+    res.json({ 
+      url: audioUrl,
+      text: text.slice(0, 100)
+    });
+
+  } catch (err) {
+    console.error("[TTS] Error:", err);
+    res.status(500).json({ error: "TTS generation failed" });
+  }
 });
 
-process.on("SIGINT", async () => {
-  console.log("SIGINT received, shutting down gracefully...");
-  audioFileManager.clear();
-  process.exit(0);
+/**
+ * @swagger
+ * /api/stt:
+ *   post:
+ *     summary: Transcribe audio using speaches API (faster-whisper)
+ *     tags: [Audio]
+ *     security:
+ *       - sessionAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               audio:
+ *                 type: string
+ *                 format: binary
+ *                 description: Audio file to transcribe
+ *               model:
+ *                 type: string
+ *                 default: Systran/faster-whisper-large-v3
+ *               language:
+ *                 type: string
+ *                 default: pt
+ *               response_format:
+ *                 type: string
+ *                 default: json
+ *               temperature:
+ *                 type: number
+ *                 default: 0.3
+ *               vad_filter:
+ *                 type: boolean
+ *                 default: true
+ *     responses:
+ *       200:
+ *         description: Transcription result
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 text:
+ *                   type: string
+ *                   description: Transcribed text
+ *                 segments:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *       400:
+ *         description: No audio file provided
+ *       500:
+ *         description: STT failed
+ */
+// POST /api/stt - Transcribe audio using speaches API, return transcript
+app.post("/api/stt", authApi, upload.single("audio"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No audio file provided" });
+    }
+
+    console.log("[STT] Received file:", {
+      originalname: req.file.originalname,
+      filename: req.file.filename,
+      mimetype: req.file.mimetype,
+      size: req.file.size,
+      path: req.file.path
+    });
+
+    const audioPath = req.file.path;
+    const speachesUrl = process.env.SPEACHES_API_URL || "http://localhost:8000";
+    const apiKey = process.env.SPEACHES_API_KEY || "";
+
+    const audioBuffer = fs.readFileSync(audioPath);
+    const blob = new Blob([audioBuffer], { type: req.file.mimetype || "audio/webm" });
+
+    const formData = new FormData();
+    formData.append("file", blob, req.file.originalname || "audio.webm");
+    formData.append("model", "Systran/faster-whisper-large-v3");
+    formData.append("language", "pt");
+    formData.append("response_format", "json");
+    formData.append("temperature", "0.3");
+    formData.append("vad_filter", "true");
+
+    const response = await fetch(`${speachesUrl}/v1/audio/transcriptions`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "accept": "application/json"
+      },
+      body: formData
+    });
+
+    // Clean up uploaded file
+    try { fs.unlinkSync(audioPath); } catch (e) { /* ignore */ }
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => "");
+      console.error("[STT] speaches API error:", response.status, errText);
+      return res.status(502).json({ error: "STT failed: " + response.status });
+    }
+
+    const result = await response.json();
+    console.log("[STT] Transcript:", result.text);
+
+    res.json({ 
+      text: result.text,
+      segments: result.segments || []
+    });
+
+  } catch (err) {
+    console.error("[STT] Error:", err);
+    res.status(500).json({ error: "STT failed" });
+  }
+});
+
+/**
+ * @swagger
+ * /api/upload-audio:
+ *   post:
+ *     summary: Upload recorded audio for STT processing
+ *     tags: [Audio]
+ *     security:
+ *       - sessionAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               audio:
+ *                 type: string
+ *                 format: binary
+ *                 description: Audio file to upload
+ *     responses:
+ *       200:
+ *         description: Audio uploaded and transcribed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 audioPath:
+ *                   type: string
+ *                   description: Server path to uploaded audio
+ *                 fileName:
+ *                   type: string
+ *                   description: Original filename
+ *                 size:
+ *                   type: integer
+ *                   description: File size in bytes
+ *                 mimetype:
+ *                   type: string
+ *                   description: MIME type
+ *                 transcript:
+ *                   type: string
+ *                   description: Transcribed text
+ *       400:
+ *         description: No audio file provided
+ *       500:
+ *         description: Server error
+ */
+// POST /api/upload-audio - Upload audio, transcribe via STT, return transcript
+app.post("/api/upload-audio", authApi, upload.single("audio"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No audio file provided" });
+    }
+
+    console.log("[UPLOAD] Received file:", {
+      originalname: req.file.originalname,
+      filename: req.file.filename,
+      mimetype: req.file.mimetype,
+      size: req.file.size,
+      path: req.file.path
+    });
+
+    const audioPath = req.file.path;
+    const speachesUrl = process.env.SPEACHES_API_URL || "http://localhost:8000";
+    const apiKey = process.env.SPEACHES_API_KEY || "";
+
+    const audioBuffer = fs.readFileSync(audioPath);
+    const blob = new Blob([audioBuffer], { type: req.file.mimetype || "audio/webm" });
+
+    const formData = new FormData();
+    formData.append("file", blob, req.file.originalname || "audio.webm");
+    formData.append("model", "Systran/faster-whisper-large-v3");
+    formData.append("language", "pt");
+    formData.append("response_format", "json");
+    formData.append("temperature", "0.3");
+    formData.append("vad_filter", "true");
+
+    const response = await fetch(`${speachesUrl}/v1/audio/transcriptions`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "accept": "application/json"
+      },
+      body: formData
+    });
+
+    // Clean up uploaded file
+    try { fs.unlinkSync(audioPath); } catch (e) { /* ignore */ }
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => "");
+      console.error("[STT] speaches API error:", response.status, errText);
+      return res.status(502).json({ error: "STT failed: " + response.status });
+    }
+
+    const result = await response.json();
+    console.log("[STT] Transcript:", result.text);
+
+    res.json({ 
+      audioPath: audioPath,
+      fileName: req.file.filename,
+      size: req.file.size,
+      mimetype: req.file.mimetype,
+      transcript: result.text,
+      segments: result.segments || []
+    });
+
+  } catch (err) {
+    console.error("[UPLOAD] Error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
 // Start Hermes API services
 initializeHermesServices();
 
-app.listen(9090, "0.0.0.0", () =>
-  console.log("Dashboard rodando na porta 9090"),
-);
+const server = app.listen(9090, "0.0.0.0", (err) => {
+  if (err) {
+    console.error("Failed to start server:", err);
+    process.exit(1);
+  }
+  const addr = server.address();
+  console.log("Dashboard rodando na porta 9090", addr);
+});
