@@ -44,9 +44,9 @@ function getQueryParam(name) {
   return null;
 }
 
-function GetFileContent(filePath, callback) {
+function GetFileContent(filePath, vaultIndex, callback) {
   httpGet(
-    "/api/file-content?path=" + encodeURIComponent(filePath),
+    "/api/file-content?path=" + encodeURIComponent(filePath) + "&vault=" + encodeURIComponent(vaultIndex),
     function (content) {
       document.querySelector("#content").innerHTML = marked(content.content);
     }
@@ -55,8 +55,9 @@ function GetFileContent(filePath, callback) {
 
 window.onload = function () {
   var filePath = getQueryParam("path");
+  var vaultIndex = localStorage.getItem("selectedVault") || 0;
   if (filePath) {
-    GetFileContent(filePath);
+    GetFileContent(filePath,vaultIndex);
   }
 
   var sidebarPlaceholder = document.getElementById("sidebar-placeholder");
