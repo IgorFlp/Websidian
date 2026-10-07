@@ -1,0 +1,17 @@
+<!-- Voice Message Player Component -->
+<div class="voice-player mt-2">
+  <button class="tts-play-btn" onclick="playVoiceMessage(this)" data-audio-id="{Audio ID}" title="Reproduzir &#225;udio">
+    <span>&#9654;</span>
+  </button>
+  <div class="waveform">
+    <span class="wave-bar" style="height:6px"></span>
+    <span class="wave-bar" style="height:10px"></span>
+    <span class="wave-bar" style="height:14px"></span>
+    <span class="wave-bar" style="height:8px"></span>
+    <span class="wave-bar" style="height:12px"></span>
+    <span class="wave-bar" style="height:6px"></span>
+    <span class="wave-bar" style="height:4px"></span>
+  </div>
+  <span class="font-label-sm text-outline text-[10px]">{Duration}</span>
+</div>
+<p class="text-xs text-outline mt-1">{Transcript}</p>
