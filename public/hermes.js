@@ -506,10 +506,9 @@ function sendTextMessageDirect(text) {
 
 function initRecording() {
   var btnMic = document.getElementById("btnMic");
-  var micLabel = btnMic ? btnMic.closest(".mic-btn-label") : null;
   var micIcon = document.getElementById("micIcon");
   var micDuration = document.getElementById("micDuration");
-  if (!btnMic || !micLabel || !micIcon || !micDuration) return;
+  if (!btnMic || !micIcon || !micDuration) return;
 
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     btnMic.title = "Gravação não suportada";
@@ -532,9 +531,9 @@ function initRecording() {
 
   function setRecordingUI(recording) {
     if (recording) {
-      micLabel.style.background = "rgba(244, 67, 54, 0.2)";
-      micLabel.style.borderColor = "#f44336";
-      micLabel.style.color = "#f44336";
+      btnMic.style.background = "rgba(244, 67, 54, 0.2)";
+      btnMic.style.borderColor = "#f44336";
+      btnMic.style.color = "#f44336";
       btnMic.title = "Parar gravação";
       micIcon.innerHTML = '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>'; // pause icon
       micDuration.style.display = "inline-block";
@@ -542,9 +541,9 @@ function initRecording() {
       micDuration.textContent = "00:00";
       durationInterval = setInterval(updateDuration, 500);
     } else {
-      micLabel.style.background = "rgba(208,188,255,0.15)";
-      micLabel.style.borderColor = "rgba(208,188,255,0.4)";
-      micLabel.style.color = "#d0bcff";
+      btnMic.style.background = "rgba(208,188,255,0.15)";
+      btnMic.style.borderColor = "rgba(208,188,255,0.4)";
+      btnMic.style.color = "#d0bcff";
       btnMic.title = "Gravar Áudio";
       micIcon.innerHTML = '<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/>'; // mic icon
       if (durationInterval) {
@@ -556,14 +555,19 @@ function initRecording() {
     }
   }
 
-  var clickTarget = micLabel;
-
-  clickTarget.addEventListener("click", function (e) {
-    // Ignore click if it was triggered by touch (old Android fires both)
-    if (e.detail === 0 || window._touchHandled) {
-      window._touchHandled = false;
-      return;
+  // Global click handler for inline touch/click
+  window.micClick = function () {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
     }
+  };
+
+  // Also add click listener as fallback
+  btnMic.addEventListener("click", function (e) {
+    // Ignore if already handled by touch
+    if (window._micTouch) return;
     e.preventDefault();
     e.stopPropagation();
     if (isRecording) {
@@ -571,29 +575,6 @@ function initRecording() {
     } else {
       startRecording();
     }
-  }, false);
-
-  // Touch events for old Android - handle start/end to suppress click
-  clickTarget.addEventListener("touchstart", function (e) {
-    // Mark that we're handling touch
-    window._touchHandled = true;
-    // Prevent default to avoid click firing later
-    if (e.preventDefault) e.preventDefault();
-  }, false);
-
-  clickTarget.addEventListener("touchend", function (e) {
-    if (e.preventDefault) e.preventDefault();
-    e.stopPropagation();
-    if (isRecording) {
-      stopRecording();
-    } else {
-      startRecording();
-    }
-  }, false);
-
-  // Also handle touchcancel
-  clickTarget.addEventListener("touchcancel", function (e) {
-    window._touchHandled = false;
   }, false);
 
   // Override startRecording/stopRecording to update UI
