@@ -1215,9 +1215,8 @@ app.get("/sessions", authApi, logHermesRequest, async (req, res) => {
  *                   type: integer
  */
 app.post("/sessions", authApi, logHermesRequest, express.json(), async (req, res) => {
-  try {
-    const { title } = req.body;
-    const session = await sessionsService.createSession(title);
+  try { 
+    const session = await sessionsService.createSession();
     res.status(201).json(session);
   } catch (err) {
     console.error("Create session error:", err);

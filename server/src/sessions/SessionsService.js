@@ -17,7 +17,7 @@ export class SessionsService {
     return this.htmlRenderer.renderSessionsList(sessions, { limit, offset });
   }
 
-  async createSession(title = null) {
+  async createSession() {
     const result = await this.hermesClient.createSession();
     const sessionId = result.sessionId;
     return {
