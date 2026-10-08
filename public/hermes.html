@@ -90,6 +90,14 @@
       <!-- Terminal Header -->
       <header class="terminal-header flex-shrink-0">
         <div class="flex items-center gap-3">
+          <button class="sidebar-toggle-btn p-1.5 rounded hover:bg-surface-container-high hover:text-primary transition-all"
+            id="btnSidebarToggle" type="button" title="Mostrar/Ocultar Sessões" aria-label="Toggle Sessions">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+          </button>
           <div class="flex items-center gap-1.5">
             <div class="ai-dot" style="background: #d0bcff"></div>
           </div>
@@ -125,7 +133,7 @@
             id="inputField" type="text" placeholder="Digite um comando..." autocomplete="off" spellcheck="false" />
           <div class="relative">
             <button class="mic-btn" id="btnMic" type="button" title="Gravar Áudio" aria-label="Microfone"
-              style="display:flex;align-items:center;justify-content:center;gap:6px;width:auto;padding:14px;border-radius:24px;background:rgba(208,188,255,0.15);border:1px solid rgba(208,188,255,0.4);color:#d0bcff;font-size:13px;font-family:inherit;cursor:pointer;transition:all 0.2s;min-width:60px;height:60px;">
+              style="display:flex;align-items:center;justify-content:center;gap:6px;width:auto;padding:14px;border-radius:24px;background:rgba(208,188,255,0.15);border:1px solid rgba(208,188,255,0.4);color:#d0bcff;font-size:13px;font-family:inherit;cursor:pointer;transition:all 0.2s;min-width:60px;height:60px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;">
               <svg id="micIcon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                 stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;flex-shrink:0;">
                 <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />

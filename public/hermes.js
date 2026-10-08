@@ -556,6 +556,11 @@ function initRecording() {
   }
 
   btnMic.addEventListener("click", function (e) {
+    // Ignore click if it was triggered by touch (old Android fires both)
+    if (e.detail === 0 || window._touchHandled) {
+      window._touchHandled = false;
+      return;
+    }
     e.preventDefault();
     e.stopPropagation();
     if (isRecording) {
@@ -563,18 +568,30 @@ function initRecording() {
     } else {
       startRecording();
     }
-  }, { passive: false });
+  }, false);
 
-  // Also support touch for old Android
+  // Touch events for old Android - handle start/end to suppress click
+  btnMic.addEventListener("touchstart", function (e) {
+    // Mark that we're handling touch
+    window._touchHandled = true;
+    // Prevent default to avoid click firing later
+    if (e.preventDefault) e.preventDefault();
+  }, false);
+
   btnMic.addEventListener("touchend", function (e) {
-    e.preventDefault();
+    if (e.preventDefault) e.preventDefault();
     e.stopPropagation();
     if (isRecording) {
       stopRecording();
     } else {
       startRecording();
     }
-  }, { passive: false });
+  }, false);
+
+  // Also handle touchcancel
+  btnMic.addEventListener("touchcancel", function (e) {
+    window._touchHandled = false;
+  }, false);
 
   // Override startRecording/stopRecording to update UI
   var originalStartRecording = window.startRecording;
@@ -743,8 +760,20 @@ function initChat() {
   var inputField = document.getElementById("inputField");
   var btnSend = document.getElementById("btnSend");
   var streamContent = document.getElementById("streamContent");
+  var sidebar = document.getElementById("sidebar");
+  var btnSidebarToggle = document.getElementById("btnSidebarToggle");
 
   if (!inputField || !btnSend || !streamContent) return;
+
+  // Sidebar toggle
+  if (btnSidebarToggle && sidebar) {
+    btnSidebarToggle.addEventListener("click", function () {
+      sidebar.classList.toggle("collapsed");
+      var isCollapsed = sidebar.classList.contains("collapsed");
+      btnSidebarToggle.setAttribute("title", isCollapsed ? "Mostrar Sessões" : "Ocultar Sessões");
+      btnSidebarToggle.setAttribute("aria-label", isCollapsed ? "Show Sessions" : "Hide Sessions");
+    });
+  }
 
   // Add debug panel toggle button
   var debugBtn = document.createElement('button');
