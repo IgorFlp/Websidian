@@ -18,11 +18,12 @@ export class SessionsService {
   }
 
   async createSession() {
-    const result = await this.hermesClient.createSession();
+    const sessionTitle = `Chat ${new Date().toLocaleString()} ${Math.random().toString(36).slice(2, 8)}`;
+    const result = await this.hermesClient.createSession(sessionTitle);
     const sessionId = result.sessionId;
     return {
       sessionId,
-      title: title || `Chat ${new Date().toLocaleString()}`,
+      title: sessionTitle,
       createdAt: Date.now(),
     };
   }

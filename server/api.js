@@ -1641,13 +1641,13 @@ cleanupAudioDirs();
 // POST /api/tts - Generate TTS using speaches API, save to public/audio
 app.post("/api/tts", authApi, async (req, res) => {
   try {
-    const { text, voice = "pm_alex", speed = 1 } = req.body;
+    const { text, voice = "pm_alex", speed = 1, messageId } = req.body;
     
     if (!text || !text.trim()) {
       return res.status(400).json({ error: "Text is required" });
     }
 
-    const speachesUrl = process.env.SPEACHES_API_URL || "localhost:8000";
+    const speachesUrl = process.env.SPEACHES_API_URL || "http://localhost:8000";
     const apiKey = process.env.SPEACHES_API_KEY || "";
     
     const payload = {
@@ -1707,7 +1707,9 @@ app.post("/api/tts", authApi, async (req, res) => {
       fs.mkdirSync(AUDIOS_DIR, { recursive: true });
     }
 
-    const fileName = `tts-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.mp3`;
+    const fileName = messageId 
+      ? `tts-${messageId}.mp3`
+      : `tts-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.mp3`;
     const filePath = path.join(AUDIOS_DIR, fileName);
     fs.writeFileSync(filePath, audioData);
 
@@ -1716,12 +1718,34 @@ app.post("/api/tts", authApi, async (req, res) => {
 
     res.json({ 
       url: audioUrl,
-      text: text.slice(0, 100)
+      text: text.slice(0, 100),
+      messageId: messageId
     });
 
   } catch (err) {
     console.error("[TTS] Error:", err);
     res.status(500).json({ error: "TTS generation failed" });
+  }
+});
+
+// GET /api/tts/:messageId - Check if TTS audio exists for messageId
+app.get("/api/tts/:messageId", authApi, (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const PUBLIC_DIR = path.join(__dirname, "..", "public");
+    const AUDIOS_DIR = path.join(PUBLIC_DIR, "audio");
+    const fileName = `tts-${messageId}.mp3`;
+    const filePath = path.join(AUDIOS_DIR, fileName);
+    
+    if (fs.existsSync(filePath)) {
+      const audioUrl = `/audio/${fileName}`;
+      return res.json({ exists: true, url: audioUrl });
+    }
+    
+    res.json({ exists: false });
+  } catch (err) {
+    console.error("[TTS] Check error:", err);
+    res.status(500).json({ error: "Failed to check TTS audio" });
   }
 });
 
@@ -1797,17 +1821,19 @@ app.post("/api/stt", authApi, upload.single("audio"), async (req, res) => {
     const audioPath = req.file.path;
     const speachesUrl = process.env.SPEACHES_API_URL || "http://localhost:8000";
     const apiKey = process.env.SPEACHES_API_KEY || "";
+    const sttModel = process.env.STT_MODEL || "Systran/faster-whisper-large-v3";
+    const sttLanguage = process.env.STT_LANGUAGE || "pt";
 
     const audioBuffer = fs.readFileSync(audioPath);
     const blob = new Blob([audioBuffer], { type: req.file.mimetype || "audio/webm" });
 
     const formData = new FormData();
     formData.append("file", blob, req.file.originalname || "audio.webm");
-    formData.append("model", "Systran/faster-whisper-large-v3");
-    formData.append("language", "pt");
+    formData.append("model", sttModel);
+    formData.append("language", sttLanguage);
     formData.append("response_format", "json");
     formData.append("temperature", "0.3");
-    formData.append("vad_filter", "true");
+    formData.append("vad_filter", "false");
 
     const response = await fetch(`${speachesUrl}/v1/audio/transcriptions`, {
       method: "POST",
@@ -1906,14 +1932,16 @@ app.post("/api/upload-audio", authApi, upload.single("audio"), async (req, res) 
     const audioPath = req.file.path;
     const speachesUrl = process.env.SPEACHES_API_URL || "http://localhost:8000";
     const apiKey = process.env.SPEACHES_API_KEY || "";
+    const sttModel = process.env.STT_MODEL || "adminbr/whisper-small-pt-ct2";
+    const sttLanguage = process.env.STT_LANGUAGE || "pt";
 
     const audioBuffer = fs.readFileSync(audioPath);
     const blob = new Blob([audioBuffer], { type: req.file.mimetype || "audio/webm" });
 
     const formData = new FormData();
     formData.append("file", blob, req.file.originalname || "audio.webm");
-    formData.append("model", "Systran/faster-whisper-large-v3");
-    formData.append("language", "pt");
+    formData.append("model", sttModel);
+    formData.append("language", sttLanguage);
     formData.append("response_format", "json");
     formData.append("temperature", "0.3");
     formData.append("vad_filter", "true");

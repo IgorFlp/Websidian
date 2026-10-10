@@ -56,6 +56,86 @@ function parseHermesResponse(response) {
   return { text: JSON.stringify(response), reasoningText: null, outputText: null, responseTime: null };
 }
 
+async function generateTTS(text, messageId) {
+  try {
+    const speachesUrl = process.env.SPEACHES_API_URL || "http://localhost:8000";
+    const apiKey = process.env.SPEACHES_API_KEY || "";
+    const ttsModel = process.env.TTS_MODEL || "speaches-ai/Kokoro-82M-v1.0-ONNX";
+    const ttsVoice = process.env.TTS_VOICE || "pm_alex";
+    const ttsLanguage = process.env.TTS_LANGUAGE || "pt";
+    
+    const payload = {
+      model: ttsModel,
+      input: text,
+      voice: ttsVoice,
+      language: ttsLanguage,
+      response_format: "mp3",
+      speed: 1
+    };
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => {
+      console.error("[TTS] Request timeout after 30s");
+      controller.abort();
+    }, 30000);
+
+    const fullUrl = `${speachesUrl}/v1/audio/speech`;
+    console.log("[TTS] Calling speaches API for messageId:", messageId);
+
+    let response;
+    try {
+      response = await fetch(fullUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "accept": "*/*",
+          "Authorization": `Bearer ${apiKey}`
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+    } catch (fetchErr) {
+      clearTimeout(timeout);
+      if (fetchErr.name === "AbortError") {
+        console.error("[TTS] Request aborted (timeout or manual abort)");
+        return null;
+      }
+      console.error("[TTS] Fetch error:", fetchErr.message);
+      return null;
+    }
+
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => "");
+      console.error("[TTS] speaches API error:", response.status, errText);
+      return null;
+    }
+
+    const audioBuffer = await response.arrayBuffer();
+    const audioData = Buffer.from(audioBuffer);
+
+    // Save to public/audio
+    const PUBLIC_DIR = path.join(__dirname, "..", "..", "..", "public");
+    const AUDIOS_DIR = path.join(PUBLIC_DIR, "audio");
+    if (!fs.existsSync(AUDIOS_DIR)) {
+      fs.mkdirSync(AUDIOS_DIR, { recursive: true });
+    }
+
+    const fileName = `tts-${messageId}.mp3`;
+    const filePath = path.join(AUDIOS_DIR, fileName);
+    fs.writeFileSync(filePath, audioData);
+
+    const audioUrl = `/audio/${fileName}`;
+    console.log("[TTS] Generated for messageId:", messageId, "->", audioUrl);
+    return audioUrl;
+
+  } catch (err) {
+    console.error("[TTS] Error generating for messageId:", messageId, err);
+    return null;
+  }
+}
+
 export class ChatService {
   constructor(audioFileManager, htmlRenderer) {
     this.audioFileManager = audioFileManager;
@@ -77,7 +157,9 @@ export class ChatService {
       } else if (sessions && sessions.length > 0) {
         currentSessionId = sessions[0].id;
       } else {
-        throw new Error("No existing sessions found. Create one via Hermes dashboard first.");
+        // No sessions exist, create a new one
+        const newSession = await this.hermesClient.createSession();
+        currentSessionId = newSession.sessionId;
       }
     }
 
@@ -143,6 +225,12 @@ export class ChatService {
         };
 
         htmlRepository.addMessage(currentSessionId, aiMessageData);
+        
+        // Generate TTS for the AI response
+        const outputForTTS = outputText || text;
+        if (outputForTTS && outputForTTS.trim()) {
+          await generateTTS(outputForTTS.trim(), aiMessageData.id);
+        }
 
         return {
           sessionId: currentSessionId,
@@ -190,6 +278,12 @@ export class ChatService {
 
     htmlRepository.addMessage(currentSessionId, messageData);
     htmlRepository.setStreaming(currentSessionId, false);
+    
+    // Generate TTS for the AI response
+    const outputForTTS = outputText || text;
+    if (outputForTTS && outputForTTS.trim()) {
+      await generateTTS(outputForTTS.trim(), messageData.id);
+    }
 
     return {
       sessionId: currentSessionId,
