@@ -165,6 +165,8 @@ export class HTMLRenderer {
         `id="${reasoningContainerId}"`
       );
 
+      html = html.split('{MessageId}').join(messageId);
+
       return html;
     }
 

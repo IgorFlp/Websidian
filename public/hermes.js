@@ -130,12 +130,52 @@ if (!("classList" in document.documentElement)) {
   });
 }
 
-function speakText(text, lang) {
+function speakText(text, lang, messageId, isAutoplay) {
   if (!text || !text.trim()) return;
 
   stopSpeaking(); // cancel any ongoing
 
-  // Try backend TTS first
+  // If we have a messageId, check cache first
+  if (messageId) {
+    checkTTSAndPlay(text, lang, messageId, isAutoplay);
+  } else {
+    // Fallback to old behavior for non-message TTS
+    requestTTS(text, lang, null, isAutoplay);
+  }
+}
+
+function checkTTSAndPlay(text, lang, messageId, isAutoplay) {
+  var xhr = new XMLHttpRequest();
+  xhr.open("GET", "/api/tts/" + encodeURIComponent(messageId), true);
+  xhr.onreadystatechange = function () {
+    if (xhr.readyState !== 4) return;
+    if (xhr.status === 200) {
+      try {
+        var resp = JSON.parse(xhr.responseText);
+        if (resp.exists && resp.url) {
+          console.log("[TTS] Cache hit for messageId:", messageId);
+          playAudio(resp.url, isAutoplay);
+        } else {
+          console.log("[TTS] Cache miss for messageId:", messageId, "fetching...");
+          requestTTS(text, lang, messageId, isAutoplay);
+        }
+      } catch (e) {
+        console.warn("[TTS] Failed to parse cache check response:", e);
+        requestTTS(text, lang, messageId, isAutoplay);
+      }
+    } else {
+      console.warn("[TTS] Cache check failed (status:", xhr.status, "), fetching...");
+      requestTTS(text, lang, messageId, isAutoplay);
+    }
+  };
+  xhr.onerror = function () {
+    console.warn("[TTS] Network error checking cache, fetching...");
+    requestTTS(text, lang, messageId, isAutoplay);
+  };
+  xhr.send();
+}
+
+function requestTTS(text, lang, messageId, isAutoplay) {
   var xhr = new XMLHttpRequest();
   xhr.open("POST", "/api/tts", true);
   xhr.setRequestHeader("Content-Type", "application/json");
@@ -145,17 +185,7 @@ function speakText(text, lang) {
       try {
         var resp = JSON.parse(xhr.responseText);
         if (resp.url) {
-          var audio = new Audio(resp.url);
-          audio.volume = 1.0;
-          audio.onended = function () {
-            activeAudio = null;
-          };
-          audio.onerror = function () {
-            console.warn("[TTS] Audio playback error, falling back to Web Speech");
-            fallbackToWebSpeech(text, lang);
-          };
-          audio.play();
-          activeAudio = audio;
+          playAudio(resp.url, isAutoplay);
         } else {
           console.warn("[TTS] No audio URL in response:", resp);
           fallbackToWebSpeech(text, lang);
@@ -173,7 +203,33 @@ function speakText(text, lang) {
     console.warn("[TTS] Network error calling backend TTS, falling back to Web Speech");
     fallbackToWebSpeech(text, lang);
   };
-  xhr.send(JSON.stringify({ text: text, voice: "pm_alex", speed: 1 }));
+  var payload = { text: text, voice: "pm_alex", speed: 1 };
+  if (messageId) payload.messageId = messageId;
+  xhr.send(JSON.stringify(payload));
+}
+
+function playAudio(url, isAutoplay) {
+  var audio = new Audio(url);
+  audio.volume = 1.0;
+  audio.onended = function () {
+    activeAudio = null;
+    updateTTSButtons(false);
+  };
+  audio.onerror = function () {
+    console.warn("[TTS] Audio playback error, falling back to Web Speech");
+    activeAudio = null;
+    updateTTSButtons(false);
+  };
+  if (isAutoplay) {
+    audio.play().catch(function (e) {
+      console.warn("[TTS] Autoplay blocked:", e);
+      // Don't fallback for autoplay, just show play button
+    });
+  } else {
+    audio.play().catch(function () { console.warn("[TTS] Playback blocked"); });
+  }
+  activeAudio = audio;
+  updateTTSButtons(true);
 }
 
 function fallbackToWebSpeech(text, lang) {
@@ -204,6 +260,7 @@ function stopSpeaking() {
     activeAudio.pause();
     activeAudio.src = "";
     activeAudio = null;
+    updateTTSButtons(false);
   }
 }
 
@@ -218,7 +275,9 @@ function playVoiceMessage(btn) {
 function playTTSForElement(btn) {
   var text = btn.getAttribute("data-tts-text");
   if (text) {
-    speakText(text, "pt-BR");
+    var msg = btn.closest(".ai-message");
+    var messageId = msg ? msg.getAttribute("data-message-id") : null;
+    speakText(text, "pt-BR", messageId, false);
   }
 }
 
@@ -249,7 +308,19 @@ function playTTSFromOutput(btn) {
   cleanText = cleanText.trim();
   
   if (cleanText) {
-    speakText(cleanText, "pt-BR");
+    var messageId = msg.getAttribute("data-message-id");
+    speakText(cleanText, "pt-BR", messageId, false);
+  }
+}
+
+function updateTTSButtons(playing) {
+  var playBtns = document.querySelectorAll(".tts-play-btn");
+  var stopBtns = document.querySelectorAll(".tts-stop-btn");
+  for (var i = 0; i < playBtns.length; i++) {
+    playBtns[i].style.display = playing ? "none" : "inline-flex";
+  }
+  for (var i = 0; i < stopBtns.length; i++) {
+    stopBtns[i].style.display = playing ? "inline-flex" : "none";
   }
 }
 
@@ -440,8 +511,9 @@ function startPolling(sessionId) {
             }
           }, 50);
           if (outputText && outputText.textContent.trim()) {
+            var messageId = lastAIMessage.getAttribute("data-message-id");
             setTimeout(function () {
-              speakText(outputText.textContent.trim(), "pt-BR");
+              speakText(outputText.textContent.trim(), "pt-BR", messageId, true);
             }, 100);
           }
         }

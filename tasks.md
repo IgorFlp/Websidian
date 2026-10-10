@@ -48,6 +48,12 @@
     - [ ] Descrição de como renderizar cada item de audio (ex.: criar <audio src=\"url\" controls autoplay> e inseri‑lo imediatamente após o trecho de HTML correspondente ou colocar em uma fila de reprodução)
     - [ ] Listar requisitos de compatibilidade (Android 4 WebKit, somente XMLHttpRequest, sem WebSocket/EventSource)
 - [ ] US01-T06 - Implementação do frontend 📅 2026-10-02
+- [ ] US01-T07 - Adicionar messageID nas mensagens 📅 2026-10-09
+- [ ] US01-T08 - Corrigir criação de nova seção 📅 2026-10-09
+- [ ] US01-T09 - Criar retorno incremental para front (stt,texto,tts) 📅 2026-10-09
+- [ ] US01-T10 - Testar modelo de stt maior ou sem limpeza de pausas no audio 📅 2026-10-09
+- [ ] US01-T11 - Vincular o play ao audio do cache 📅 2026-10-09
+- [ ] US01-T12 - Adicionar texto selecionavel 📅 2026-10-09
     - [ ] Criar página HTML mínima com:
         <div id=\"terminal\" style=\"white-space:pre-wrap; font-family:monospace;\"></div>
         <input id=\"cmd\" type=\"text\" placeholder=\"Digite o comando…\"> + botão Enviar (ou captura de Enter)
