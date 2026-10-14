@@ -20,7 +20,7 @@
     - [x] Definir esquemas de request/response (JSON) para cada endpoint – response incluirá campo html (string) contendo o trecho pronto para inserir no DOM 
     - [ ] Escrever arquivo OpenSpec (YAML/JSON) contendo: paths, parameters, responses, exemplos de payload
     - [ ] Incluir tratamento de erro (500, 400) e cabeçalhos de CORS (se necessário)
-- [ ] US01-T03 - Implementação do backend 📅 2026-10-02
+- [x] US01-T03 - Implementação do backend 📅 2026-10-02 ✅ 2026-10-02
     - [ ] Criar servidor Node.js/Express mínimo (ou usar módulo http puro)
     - [ ] Adicionar dependência ansi-up (ou similar) para converter códigos ANSI em HTML
     - [ ] Implementar spawn do processo Hermes em PTY (child_process.spawn)
@@ -32,14 +32,14 @@
     - [ ] Implementar endpoint /terminal/input (POST) que escreve no stdin do processo Hermes
     - [ ] Adicionar lógica de respawn do processo Hermes caso ele termine inesperadamente
     - [ ] Limpar arquivos de áudio antigos (mais de 10 min ou quando >10)
-- [ ] US01-T04 - Teste de backend no Swagger (ou equivalente) 📅 2026-10-02
+- [x] US01-T04 - Teste de backend no Swagger (ou equivalente) 📅 2026-10-02 ✅ 2026-10-02
     - [ ] Iniciar o servidor localmente e apontar a UI do Swagger para o arquivo OpenSpec
     - [ ] Verificar que ambos os endpoints aparecem e são executáveis
     - [ ] Testar /terminal/poll com since=0 → receber html contendo cores/estilos e (eventualmente) áudio
     - [ ] Testar /terminal/input enviando um comando simples (ex.: echo ola) e confirmar que a saída HTML aparece na próxima chamada de poll
     - [ ] Verificar que arquivos de áudio são gerados e removidos conforme a política de retenção
     - [ ] Validar que o HTML inserido em um <div> renderiza exatamente como o Hermes no CLI (cores, negrito, etc.)
-- [ ] US01-T05 - Criação da spec do frontend 📅 2026-10-02
+- [x] US01-T05 - Criação da spec do frontend 📅 2026-10-02 ✅ 2026-10-02
     - [ ] Definir contrato de comunicação:
         GET /terminal/poll?since=<ts> → {since, html:string, audio:[{url,text}]}
         POST /terminal/input → {data: string}
@@ -47,13 +47,17 @@
     - [ ] Descrever como inserir o html retornado no container (ex.: terminalDiv.insertAdjacentHTML('beforeend', resp.html)) e rolar para baixo
     - [ ] Descrição de como renderizar cada item de audio (ex.: criar <audio src=\"url\" controls autoplay> e inseri‑lo imediatamente após o trecho de HTML correspondente ou colocar em uma fila de reprodução)
     - [ ] Listar requisitos de compatibilidade (Android 4 WebKit, somente XMLHttpRequest, sem WebSocket/EventSource)
-- [ ] US01-T06 - Implementação do frontend 📅 2026-10-02
-- [ ] US01-T07 - Adicionar messageID nas mensagens 📅 2026-10-09
-- [ ] US01-T08 - Corrigir criação de nova seção 📅 2026-10-09
-- [ ] US01-T09 - Criar retorno incremental para front (stt,texto,tts) 📅 2026-10-09
-- [ ] US01-T10 - Testar modelo de stt maior ou sem limpeza de pausas no audio 📅 2026-10-09
-- [ ] US01-T11 - Vincular o play ao audio do cache 📅 2026-10-09
-- [ ] US01-T12 - Adicionar texto selecionavel 📅 2026-10-09
+- [x] US01-T06 - Implementação do frontend 📅 2026-10-02 ✅ 2026-10-02
+- [ ] US02 - Melhoria de robustes
+    - [ ] US02-T01 - Criar especificação do refactor 📅 2026-10-14
+    - [ ] US02-T02 - Aplicar especificação do refactor (critérios de aceite) 📅 2026-10-14
+    - [ ] US02-T03 - Criar especificação de melhoria com ID e estrutura de dados 📅 2026-10-15
+    - [ ] US02-T04 - Aplicação da especificação de melhoria 📅 2026-10-15
+- [ ] US03 - Melhoria de UX
+    - [ ] US03-T01 - Criar retorno incremental para front (stt,texto,tts) 📅 2026-10-19
+    - [x] US03-T02 - Testar modelo de STT maior ou sem limpeza de pausas no áudio 📅 2026-10-19
+    - [ ] US03-T03 - Vincular o play ao áudio do cache 📅 2026-10-19
+    - [ ] US03-T04 - Adicionar texto selecionável 📅 2026-10-19
     - [ ] Criar página HTML mínima com:
         <div id=\"terminal\" style=\"white-space:pre-wrap; font-family:monospace;\"></div>
         <input id=\"cmd\" type=\"text\" placeholder=\"Digite o comando…\"> + botão Enviar (ou captura de Enter)
