@@ -61,8 +61,12 @@ export const authRoutes: FastifyPluginAsyncZod = async (fastify) => {
   });
 
   fastify.get("/login", async (_request, reply) => {
-    reply.type("text/html");
-    return `<html><head><title>Login</title></head><body><h1>Login</h1><form method="POST" action="/login"><input name="username" placeholder="Username"/><input name="password" type="password" placeholder="Password"/><button type="submit">Login</button></form></body></html>`;
+    const loginPath = "C:\\\Users\\\Igor\\\Desktop\\\Projetos Pessoais\\\IgorFlpDev-Documentacao\\\systems\\\Websidian\\\public\\\login.html";
+    if (fs.existsSync(loginPath)) {
+      reply.type("text/html");
+      return fs.readFileSync(loginPath, "utf-8");
+    }
+    return reply.status(404).send({ error: "Login page not found" });
   });
 };
 
