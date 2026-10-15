@@ -1,5 +1,7 @@
 import { FastifyInstance } from "fastify";
 import Fastify from "fastify";
+import fastifyStatic from "@fastify/static";
+import path from "path";
 import { registerPlugins } from "./plugins/index.js";
 import { registerRoutes } from "./routes/index.js";
 import { config } from "./config/index.js";
@@ -26,6 +28,12 @@ async function buildApp(): Promise<FastifyInstance> {
 
   await registerPlugins(app);
   await registerRoutes(app);
+
+  // Register static plugin after routes to avoid intercepting /login and other routes
+  await app.register(fastifyStatic, {
+    root: path.join(process.cwd(), "public"),
+    prefix: "/",
+  });
 
   app.addHook("onReady", async () => {
     cleanupAudioDirs();

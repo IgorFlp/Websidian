@@ -2,6 +2,9 @@ import { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
 import { AuthService } from "../service/auth.service.js";
 import { config } from "../config/index.js";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 
 const authService = new AuthService();
 
@@ -58,7 +61,8 @@ export const authRoutes: FastifyPluginAsyncZod = async (fastify) => {
   });
 
   fastify.get("/login", async (_request, reply) => {
-    return reply.sendFile("login.html");
+    reply.type("text/html");
+    return `<html><head><title>Login</title></head><body><h1>Login</h1><form method="POST" action="/login"><input name="username" placeholder="Username"/><input name="password" type="password" placeholder="Password"/><button type="submit">Login</button></form></body></html>`;
   });
 };
 

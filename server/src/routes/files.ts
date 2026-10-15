@@ -24,7 +24,7 @@ const fileNodeSchema: z.ZodType<any> = z.object({
   type: z.enum(["folder", "file"]),
   name: z.string(),
   path: z.string(),
-  children: z.array(z.lazy(() => fileNodeSchema)).optional(),
+  children: z.array(z.unknown()).optional(),
   size: z.number().optional(),
   modified: z.number().optional(),
 });
