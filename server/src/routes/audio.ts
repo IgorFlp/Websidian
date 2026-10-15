@@ -282,6 +282,22 @@ export const audioRoutes: FastifyPluginAsyncZod = async (fastify) => {
     }
   });
 
+  fastify.get("/api/tts-config", {
+    schema: {
+      response: {
+        200: z.object({
+          url: z.string(),
+          autoPlay: z.boolean(),
+        }),
+      },
+    },
+  }, async () => {
+    return {
+      url: config.speachesApiUrl,
+      autoPlay: true,
+    };
+  });
+
   fastify.get("/audio/:id", {
     schema: {
       params: z.object({ id: z.string().min(1) }),
@@ -289,6 +305,7 @@ export const audioRoutes: FastifyPluginAsyncZod = async (fastify) => {
         200: z.string(),
         404: z.object({ error: z.string() }),
       },
+      hide: true,
     },
   }, async (request, reply) => {
     const { id } = request.params as { id: string };

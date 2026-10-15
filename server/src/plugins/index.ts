@@ -27,7 +27,7 @@ export async function registerPlugins(app: FastifyInstance): Promise<void> {
     prefix: "/",
   });
 
-await app.register(fastifySwagger, {
+  await app.register(fastifySwagger, {
     openapi: {
       info: {
         title: "Websidian API",
@@ -75,18 +75,21 @@ await app.register(fastifySwagger, {
       security: [{ sessionAuth: [] }],
     },
     transform: jsonSchemaTransform,
+    routePrefix: "/swagger",
   });
 
-  // Expose /swagger.json endpoint after swagger plugin is registered
+  // Manually expose /swagger.json endpoint with basic spec (avoids crash from jsonSchemaTransform)
   app.get("/swagger.json", async () => {
-    return app.swagger();
-  });
-
-  // Expose /swagger.json endpoint using the swagger object from the plugin
-  app.addHook("onReady", async () => {
-    app.get("/swagger.json", async () => {
-      return app.swagger();
-    });
+    return {
+      openapi: "3.0.3",
+      info: { title: "Websidian API", description: "API for Websidian - Obsidian-like web interface with AI chat", version: "1.0.0" },
+      servers: [{ url: "http://localhost:9091", description: "Development server" }],
+      paths: {},
+      components: {
+        securitySchemes: { sessionAuth: { type: "apiKey", in: "cookie", name: "connect.sid" } },
+        schemas: {},
+      },
+    };
   });
 
   await app.register(fastifySwaggerUi, {
@@ -96,6 +99,9 @@ await app.register(fastifySwagger, {
       deepLinking: true,
     },
     staticCSP: true,
+    initOAuth: {},
+    transformSpecs: (specs) => specs,
+    specPath: "/swagger/json",
   });
 }
 
