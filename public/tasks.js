@@ -476,7 +476,7 @@ function loadTasks() {
 
 function toggleTask(task) {
   var vaultIndex = getActiveVaultIndex();
-  httpPost("/api/tasks/toggle", { file: task.file, line: task.line, vaultIndex: vaultIndex }, function(err, response) {
+  httpPost("/api/tasks/toggle", { file: task.file, line: task.line, vault: vaultIndex }, function(err, response) {
     if (err) {
       alert("Erro ao alternar tarefa: " + err.message);
       return;

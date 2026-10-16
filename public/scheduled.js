@@ -310,7 +310,7 @@ function renderSectionWithVaults(allTasksByVault, vaults, filterFn, ulId, sectio
 
 function toggleTask(task) {
   var vaultIndex = task.vaultIndex !== undefined ? task.vaultIndex : localStorage.getItem("selectedVault");
-  var data = { file: task.file, line: task.line, vaultIndex: vaultIndex };
+  var data = { file: task.file, line: task.line, vault: vaultIndex };
   if (task.done !== undefined) data.done = task.done;
   var xhr = new XMLHttpRequest();
   xhr.open("POST", "/api/tasks/toggle", true);

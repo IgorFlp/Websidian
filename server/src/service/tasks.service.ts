@@ -157,7 +157,7 @@ parseTask(line: string): ParsedTask | null {
 
     const wasDone = originalLine.includes("[x]");
     content[line] = wasDone
-      ? originalLine.replace("[x]", "[ ]")
+      ? originalLine.replace("[x]", "[ ]").replace(/\s*✅\s*\d{4}-\d{2}-\d{2}/, "")
       : originalLine.replace("[ ]", "[x]") + ` ✅ ${new Date().toISOString().split("T")[0]}`;
 
     if (content[line].includes("🔁")) {
