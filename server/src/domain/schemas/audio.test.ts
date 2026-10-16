@@ -33,7 +33,7 @@ describe("Audio Schemas", () => {
     });
 
     it("should reject missing text", () => {
-      assert.throws(() => TTSRequestSchema.parse({ voice: "v" }), /Required/);
+      assert.throws(() => TTSRequestSchema.parse({ voice: "v" }), /invalid_type/);
     });
 
     it("should reject empty text", () => {
@@ -70,7 +70,7 @@ describe("Audio Schemas", () => {
     });
 
     it("should reject missing messageId", () => {
-      assert.throws(() => TTSCheckParamsSchema.parse({}), /Required/);
+      assert.throws(() => TTSCheckParamsSchema.parse({}), /invalid_type/);
     });
 
     it("should have describe metadata", () => {
@@ -153,7 +153,7 @@ describe("Audio Schemas", () => {
     });
 
     it("should reject missing id", () => {
-      assert.throws(() => AudioParamsSchema.parse({}), /Required/);
+      assert.throws(() => AudioParamsSchema.parse({}), /invalid_type/);
     });
 
     it("should have describe metadata", () => {

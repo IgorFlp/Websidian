@@ -65,7 +65,7 @@ describe("Presets Schemas", () => {
     });
 
     it("should reject missing name", () => {
-      assert.throws(() => CreatePresetRequestSchema.parse({ description: "Desc" }), /Required/);
+      assert.throws(() => CreatePresetRequestSchema.parse({ description: "Desc" }), /invalid_type/);
     });
 
     it("should have describe metadata", () => {

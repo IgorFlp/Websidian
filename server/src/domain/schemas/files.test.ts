@@ -86,7 +86,7 @@ describe("Files Schemas", () => {
     });
 
     it("should reject missing path", () => {
-      assert.throws(() => FileContentQuerySchema.parse({ vault: "v1" }), /Required/);
+      assert.throws(() => FileContentQuerySchema.parse({ vault: "v1" }), /invalid_type/);
     });
 
     it("should have describe metadata", () => {
@@ -113,7 +113,7 @@ describe("Files Schemas", () => {
     });
 
     it("should reject missing path", () => {
-      assert.throws(() => DownloadQuerySchema.parse({ vault: "v1" }), /Required/);
+      assert.throws(() => DownloadQuerySchema.parse({ vault: "v1" }), /invalid_type/);
     });
 
     it("should have describe metadata", () => {

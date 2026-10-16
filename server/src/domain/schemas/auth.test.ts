@@ -18,11 +18,11 @@ describe("Auth Schemas", () => {
     });
 
     it("should reject missing username", () => {
-      assert.throws(() => LoginRequestSchema.parse({ password: "pass" }), /Required/);
+      assert.throws(() => LoginRequestSchema.parse({ password: "pass" }), /invalid_type/);
     });
 
     it("should reject missing password", () => {
-      assert.throws(() => LoginRequestSchema.parse({ username: "user" }), /Required/);
+      assert.throws(() => LoginRequestSchema.parse({ username: "user" }), /invalid_type/);
     });
 
     it("should reject empty username", () => {

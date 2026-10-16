@@ -22,7 +22,7 @@ describe("Notes Schemas", () => {
     });
 
     it("should reject missing content", () => {
-      assert.throws(() => NewNoteRequestSchema.parse({ date: "2024-01-15" }), /Required/);
+      assert.throws(() => NewNoteRequestSchema.parse({ date: "2024-01-15" }), /invalid_type/);
     });
 
     it("should have describe metadata", () => {

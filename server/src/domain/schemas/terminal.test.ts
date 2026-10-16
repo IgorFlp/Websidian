@@ -65,7 +65,7 @@ describe("Terminal Schemas", () => {
     });
 
     it("should reject missing sessionId", () => {
-      assert.throws(() => TerminalPollQuerySchema.parse({}), /Required/);
+      assert.throws(() => TerminalPollQuerySchema.parse({}), /invalid_type/);
     });
 
     it("should reject negative since", () => {

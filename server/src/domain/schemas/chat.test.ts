@@ -29,7 +29,7 @@ describe("Chat Schemas", () => {
     });
 
     it("should reject missing message", () => {
-      assert.throws(() => ChatRequestSchema.parse({ sessionId: "s1" }), /Required/);
+      assert.throws(() => ChatRequestSchema.parse({ sessionId: "s1" }), /invalid_type/);
     });
 
     it("should reject empty message", () => {
@@ -66,7 +66,7 @@ describe("Chat Schemas", () => {
     });
 
     it("should reject missing sessionId", () => {
-      assert.throws(() => MessagesParamsSchema.parse({}), /Required/);
+      assert.throws(() => MessagesParamsSchema.parse({}), /invalid_type/);
     });
 
     it("should have describe metadata", () => {
@@ -121,7 +121,7 @@ describe("Chat Schemas", () => {
     });
 
     it("should reject missing title", () => {
-      assert.throws(() => CreateSessionRequestSchema.parse({ model: "gpt-4" }), /Required/);
+      assert.throws(() => CreateSessionRequestSchema.parse({ model: "gpt-4" }), /invalid_type/);
     });
 
     it("should have describe metadata", () => {
