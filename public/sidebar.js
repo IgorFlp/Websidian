@@ -288,7 +288,7 @@
     folderTree.innerHTML = '<li class="loading-placeholder">Carregando...</li>';
 
     httpGet('/api/files?vault='+localStorage.getItem('selectedVault'), function(data) {
-      var tree = data.tree || [];
+      var tree = data.files || [];
       if (tree.length === 0) {
         folderTree.innerHTML = '<li class="empty-state">Nenhum arquivo encontrado</li>';
         return;

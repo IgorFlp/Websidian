@@ -1,6 +1,7 @@
 import { getHermesClient } from "../hermes/HermesClient.js";
 import { chat_prompt } from "../prompts/Chat-prompt.js";
 import { htmlRepository } from "../html/HTMLRepository.js";
+import { config } from "../config/index.js";
 import fs from "fs";
 import os from "os";
 import path from "path";
@@ -58,11 +59,12 @@ function parseHermesResponse(response) {
 
 async function generateTTS(text, messageId) {
   try {
-    const speachesUrl = process.env.SPEACHES_API_URL || "http://localhost:8000";
-    const apiKey = process.env.SPEACHES_API_KEY || "";
-    const ttsModel = process.env.TTS_MODEL || "speaches-ai/Kokoro-82M-v1.0-ONNX";
-    const ttsVoice = process.env.TTS_VOICE || "pm_alex";
-    const ttsLanguage = process.env.TTS_LANGUAGE || "pt";
+    const speachesUrl = config.speachesApiUrl;
+    const apiKey = config.speachesApiKey;
+    const ttsModel = config.ttsModel;
+    const ttsVoice = config.ttsVoice;
+    const ttsLanguage = config.ttsLanguage;
+    const ttsSpeed = config.ttsSpeed || 1;
     
     const payload = {
       model: ttsModel,
@@ -70,7 +72,7 @@ async function generateTTS(text, messageId) {
       voice: ttsVoice,
       language: ttsLanguage,
       response_format: "mp3",
-      speed: 1
+      speed: ttsSpeed
     };
 
     const controller = new AbortController();
