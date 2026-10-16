@@ -9,6 +9,14 @@ var activeAudio = null;
 var autoPlayEnabled = true; // Auto-play TTS after AI response
 var lastMessageCount = 0;
 var debugLogs = [];
+var ttsFallbackTimer = null;
+var ttsResolved = false;
+var pendingAudioUrl = null;
+var pendingPlayListenerAttached = false;
+var pendingPlayAttempts = 0;
+var pendingTtsText = null;
+var pendingTtsLang = null;
+var ttsUrlByMessageId = {};
 
 // Capture console.log for mobile debugging
 var originalLog = console.log;
@@ -130,21 +138,392 @@ if (!("classList" in document.documentElement)) {
   });
 }
 
-function speakText(text, lang, messageId, isAutoplay) {
-  if (!text || !text.trim()) return;
+// 1-sample silent WAV: played synchronously inside a user gesture to unlock
+// the audio channel on Android (Chrome/WebView blocks play() without gesture)
+var TTS_UNLOCK_WAV = "data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQIAAAAAAA==";
 
-  stopSpeaking(); // cancel any ongoing
+// WebAudio context: created/resumed on the first user gesture. Once running,
+// BufferSourceNode playback is NOT subject to the media gesture check, which
+// lets auto-play (polling) work on Android without a "tap to play" step.
+var ttsAudioContext = null;
+var ttsAudioPrimed = false;
 
-  // If we have a messageId, check cache first
-  if (messageId) {
-    checkTTSAndPlay(text, lang, messageId, isAutoplay);
-  } else {
-    // Fallback to old behavior for non-message TTS
-    requestTTS(text, lang, null, isAutoplay);
+function ensureAudioContext() {
+  try {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    if (!ttsAudioContext) {
+      ttsAudioContext = new AC();
+      console.log("[TTS] AudioContext created, state:", ttsAudioContext.state || "unknown");
+    }
+    if (ttsAudioContext.state === "suspended" && typeof ttsAudioContext.resume === "function") {
+      var p = ttsAudioContext.resume();
+      if (p && typeof p.then === "function") {
+        p.then(null, function () {});
+      }
+    }
+    return ttsAudioContext;
+  } catch (e) {
+    console.warn("[TTS] AudioContext error:", e && e.message);
+    return null;
   }
 }
 
-function checkTTSAndPlay(text, lang, messageId, isAutoplay) {
+function isAudioContextRunning(ctx) {
+  if (!ctx) return false;
+  // Old webkitAudioContext has no .state — assume running after creation
+  return ctx.state ? ctx.state === "running" : true;
+}
+
+function primeAudio() {
+  // Always retry resume — if the context was created outside a gesture it
+  // stays suspended until the first real touch
+  ensureAudioContext();
+  if (!ttsAudioPrimed) {
+    ttsAudioPrimed = true;
+    unlockAudioChannel();
+  }
+}
+
+// First touch/click anywhere unlocks WebAudio for the rest of the session
+document.addEventListener("touchstart", primeAudio, true);
+document.addEventListener("mousedown", primeAudio, true);
+document.addEventListener("click", primeAudio, true);
+
+function playViaWebAudio(url, isAutoplay, onFail) {
+  var ctx = ttsAudioContext;
+  if (!isAudioContextRunning(ctx)) {
+    onFail("audiocontext not running");
+    return;
+  }
+  var settled = false;
+  function fail(reason) {
+    if (settled) return;
+    settled = true;
+    console.warn("[TTS] WebAudio path failed (" + reason + ") — falling back to <audio>");
+    onFail(reason);
+  }
+
+  var xhr = new XMLHttpRequest();
+  xhr.open("GET", url, true);
+  xhr.responseType = "arraybuffer";
+  xhr.onload = function () {
+    if (settled) return;
+    if (xhr.status !== 200) {
+      fail("http " + xhr.status);
+      return;
+    }
+    var started = false;
+    function start(buffer) {
+      if (settled || started) return;
+      started = true;
+      settled = true;
+      try {
+        var source = ctx.createBufferSource();
+        source.buffer = buffer;
+        var gain = ctx.createGain ? ctx.createGain() : ctx.createGainNode();
+        gain.gain.value = 1.0;
+        source.connect(gain);
+        gain.connect(ctx.destination);
+
+        var handle = {
+          _ttsWebAudio: true,
+          pause: function () {
+            try {
+              if (source.stop) source.stop(0);
+              else if (source.noteOff) source.noteOff(0);
+            } catch (e) {}
+          }
+        };
+        source.onended = function () {
+          if (activeAudio === handle) activeAudio = null;
+          updateTTSButtons(false);
+        };
+        activeAudio = handle;
+        pendingPlayAttempts = 0;
+        updateTTSButtons(true);
+        if (source.start) source.start(0);
+        else if (source.noteOn) source.noteOn(0);
+        console.log("[TTS] WebAudio playback started:", url, "| autoplay=" + !!isAutoplay);
+        // Safety reset for very old WebViews without onended on BufferSource
+        setTimeout(function () {
+          if (activeAudio === handle) {
+            activeAudio = null;
+            updateTTSButtons(false);
+          }
+        }, ((buffer.duration || 5) * 1000) + 1000);
+      } catch (e) {
+        settled = false;
+        fail("start: " + ((e && e.message) || e));
+      }
+    }
+    function decodeFailed(err) {
+      fail("decode: " + ((err && err.message) || err || "unsupported"));
+    }
+    try {
+      var p = ctx.decodeAudioData(xhr.response, start, decodeFailed);
+      // Newer browsers return a promise; callback + promise would double-start,
+      // but the `started` flag inside start() guards that
+      if (p && typeof p.then === "function") {
+        p.then(start, decodeFailed);
+      }
+    } catch (e) {
+      decodeFailed(e);
+    }
+  };
+  xhr.onerror = function () {
+    fail("network");
+  };
+  xhr.send();
+}
+
+function unlockAudioChannel() {
+  try {
+    var unlockAudio = new Audio(TTS_UNLOCK_WAV);
+    unlockAudio.volume = 0;
+    var p = unlockAudio.play();
+    if (p && typeof p.then === "function") {
+      p.then(null, function () {});
+    }
+    setTimeout(function () { try { unlockAudio.pause(); } catch (e) {} }, 300);
+  } catch (e) {}
+}
+
+function showTapToPlayNotice() {
+  var el = document.getElementById("ttsTapNotice");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "ttsTapNotice";
+    el.style.cssText = "position:fixed;left:50%;bottom:90px;-webkit-transform:translateX(-50%);transform:translateX(-50%);background:rgba(30,30,30,0.95);color:#fff;padding:10px 18px;border-radius:24px;font-size:14px;z-index:10001;box-shadow:0 2px 10px rgba(0,0,0,0.45);text-align:center;";
+    el.textContent = "Toque para ouvir";
+    document.body.appendChild(el);
+  }
+  el.style.display = "block";
+}
+
+function hideTapToPlayNotice() {
+  var el = document.getElementById("ttsTapNotice");
+  if (el) el.style.display = "none";
+}
+
+function cancelPendingPlay() {
+  pendingAudioUrl = null;
+  pendingPlayAttempts = 0;
+  pendingTtsText = null;
+  pendingTtsLang = null;
+  hideTapToPlayNotice();
+}
+
+function getKnownTtsUrl(messageId) {
+  if (!messageId) return null;
+  if (ttsUrlByMessageId[messageId]) return ttsUrlByMessageId[messageId];
+  try {
+    var raw = localStorage.getItem("hermes_tts_url_map");
+    if (raw) {
+      var map = JSON.parse(raw);
+      if (map && typeof map === "object" && map[messageId]) {
+        ttsUrlByMessageId[messageId] = map[messageId];
+        return map[messageId];
+      }
+    }
+  } catch (e) {}
+  return null;
+}
+
+function rememberTtsUrl(messageId, url) {
+  if (!messageId || !url) return;
+  ttsUrlByMessageId[messageId] = url;
+  try {
+    var raw = localStorage.getItem("hermes_tts_url_map");
+    var map = raw ? JSON.parse(raw) : {};
+    if (!map || typeof map !== "object") map = {};
+    var keys = [];
+    for (var k in map) { if (map.hasOwnProperty(k)) keys.push(k); }
+    if (keys.length > 300) {
+      for (var i = 0; i < 50; i++) delete map[keys[i]];
+    }
+    map[messageId] = url;
+    localStorage.setItem("hermes_tts_url_map", JSON.stringify(map));
+  } catch (e) {}
+}
+
+function forgetTtsUrl(messageId, url) {
+  if (!messageId) return;
+  if (ttsUrlByMessageId[messageId] === url) delete ttsUrlByMessageId[messageId];
+  try {
+    var raw = localStorage.getItem("hermes_tts_url_map");
+    var map = raw ? JSON.parse(raw) : null;
+    if (map && map[messageId] === url) {
+      delete map[messageId];
+      localStorage.setItem("hermes_tts_url_map", JSON.stringify(map));
+    }
+  } catch (e) {}
+}
+
+function armPendingPlay(url, text, lang) {
+  if (text) {
+    pendingTtsText = text;
+    pendingTtsLang = lang || "pt-BR";
+  }
+  if (!url) {
+    console.warn("[TTS] Pending play not armed: no URL");
+    return;
+  }
+  if (pendingPlayAttempts >= 3) {
+    console.warn("[TTS] Giving up on tap-to-play after 3 attempts — trying Web Speech last resort:", url);
+    var t = pendingTtsText;
+    var l = pendingTtsLang;
+    pendingAudioUrl = null;
+    pendingPlayAttempts = 0;
+    hideTapToPlayNotice();
+    if (t) {
+      if (!fallbackToWebSpeech(t, l, url)) {
+        console.warn("[TTS] No fallback available");
+      }
+    } else {
+      console.warn("[TTS] No text stored for last-resort speech");
+    }
+    return;
+  }
+  pendingAudioUrl = url;
+  pendingPlayAttempts++;
+  showTapToPlayNotice();
+  console.log("[TTS] Awaiting user gesture to play (attempt " + pendingPlayAttempts + "/3):", url);
+  if (pendingPlayListenerAttached) return;
+  pendingPlayListenerAttached = true;
+  document.addEventListener("touchstart", rememberTouchStart, true);
+  document.addEventListener("click", resumePendingPlay, true);
+  document.addEventListener("touchend", resumePendingPlay, true);
+}
+
+var pendingTouchStartX = 0;
+var pendingTouchStartY = 0;
+
+function rememberTouchStart(e) {
+  if (e.touches && e.touches[0]) {
+    pendingTouchStartX = e.touches[0].clientX;
+    pendingTouchStartY = e.touches[0].clientY;
+  }
+}
+
+function resumePendingPlay(e) {
+  if (!pendingAudioUrl) return;
+  // Ignore touchend that came from a scroll/drag gesture
+  if (e && e.type === "touchend" && e.changedTouches && e.changedTouches[0]) {
+    var t = e.changedTouches[0];
+    if (Math.abs(t.clientX - pendingTouchStartX) > 15 || Math.abs(t.clientY - pendingTouchStartY) > 15) {
+      return;
+    }
+  }
+  var url = pendingAudioUrl;
+  pendingAudioUrl = null;
+  hideTapToPlayNotice();
+  console.log("[TTS] Resuming playback from user gesture:", url);
+  unlockAudioChannel();
+  playAudio(url, false, function (reason) {
+    if (reason && reason.indexOf("media error") === 0) {
+      console.warn("[TTS] Media error on gesture resume (file gone?):", url);
+    }
+    armPendingPlay(url, pendingTtsText, pendingTtsLang);
+  });
+}
+
+function speakText(text, lang, messageId, isAutoplay) {
+  if (!text || !text.trim()) return;
+
+  primeAudio(); // create/resume AudioContext inside the gesture when possible
+  stopSpeaking();
+
+  var timeoutMs = 100 + (text.length * 10);
+  var pipelineRetried = false;
+  ttsResolved = false;
+
+  function clearUrlTimeout() {
+    if (ttsFallbackTimer) { clearTimeout(ttsFallbackTimer); ttsFallbackTimer = null; }
+  }
+
+  function armUrlTimeout() {
+    clearUrlTimeout();
+    ttsFallbackTimer = setTimeout(function () {
+      if (!ttsResolved) {
+        console.log("[TTS] Timeout " + timeoutMs + "ms exceeded — still waiting for TTS URL (Web Speech is last resort only)");
+      }
+    }, timeoutMs);
+  }
+  armUrlTimeout();
+
+  function playbackFailed(url, reason) {
+    // Known/optimistic URL turned out to be dead (e.g. file cleaned up) —
+    // forget it and run the normal cache-check/generate pipeline once
+    if (reason && reason.indexOf("media error") === 0 && !pipelineRetried) {
+      pipelineRetried = true;
+      console.warn("[TTS] Media error on direct URL, re-running pipeline:", url);
+      forgetTtsUrl(messageId, url);
+      ttsResolved = false;
+      armUrlTimeout();
+      runPipeline();
+      return;
+    }
+    // Priority: backend MP3 via real user gesture; Web Speech only after 3 taps
+    armPendingPlay(url, text, lang);
+  }
+
+  function startPlayback(url) {
+    ttsResolved = true;
+    clearUrlTimeout();
+    rememberTtsUrl(messageId, url);
+    playAudio(url, isAutoplay, function (reason) {
+      playbackFailed(url, reason);
+    });
+  }
+
+  function resolve(url) {
+    if (ttsResolved) {
+      console.log("[TTS] resolve ignored (already settled):", url);
+      return;
+    }
+    if (!url) {
+      console.warn("[TTS] resolve skipped: no URL — using Web Speech as last resort");
+      ttsResolved = true;
+      clearUrlTimeout();
+      if (!fallbackToWebSpeech(text, lang, null)) {
+        console.warn("[TTS] No fallback available");
+      }
+      return;
+    }
+    startPlayback(url);
+  }
+
+  function runPipeline() {
+    if (messageId) {
+      checkTTSCache(messageId, function (cachedUrl) {
+        if (cachedUrl) {
+          resolve(cachedUrl);
+        } else {
+          generateTTS(text, messageId, resolve);
+        }
+      });
+    } else {
+      generateTTS(text, null, resolve);
+    }
+  }
+
+  var knownUrl = getKnownTtsUrl(messageId);
+  if (knownUrl) {
+    console.log("[TTS] Known URL — playing synchronously:", knownUrl);
+    startPlayback(knownUrl);
+  } else if (messageId && !isAutoplay) {
+    // Manual play: URL is deterministic (tts-<messageId>.mp3) — try it inside
+    // the click gesture without waiting for XHR; on 404 we fall back to pipeline
+    var optimisticUrl = "/audio/tts-" + messageId + ".mp3";
+    console.log("[TTS] Trying direct URL inside gesture:", optimisticUrl);
+    startPlayback(optimisticUrl);
+  } else {
+    runPipeline();
+  }
+}
+
+function checkTTSCache(messageId, callback) {
   var xhr = new XMLHttpRequest();
   xhr.open("GET", "/api/tts/" + encodeURIComponent(messageId), true);
   xhr.onreadystatechange = function () {
@@ -153,29 +532,24 @@ function checkTTSAndPlay(text, lang, messageId, isAutoplay) {
       try {
         var resp = JSON.parse(xhr.responseText);
         if (resp.exists && resp.url) {
-          console.log("[TTS] Cache hit for messageId:", messageId);
-          playAudio(resp.url, isAutoplay);
-        } else {
-          console.log("[TTS] Cache miss for messageId:", messageId, "fetching...");
-          requestTTS(text, lang, messageId, isAutoplay);
+          console.log("[TTS] Cache hit:", messageId);
+          callback(resp.url);
+          return;
         }
-      } catch (e) {
-        console.warn("[TTS] Failed to parse cache check response:", e);
-        requestTTS(text, lang, messageId, isAutoplay);
-      }
+      } catch (e) {}
     } else {
-      console.warn("[TTS] Cache check failed (status:", xhr.status, "), fetching...");
-      requestTTS(text, lang, messageId, isAutoplay);
+      console.warn("[TTS] Cache check failed with status:", xhr.status);
     }
+    callback(null);
   };
   xhr.onerror = function () {
-    console.warn("[TTS] Network error checking cache, fetching...");
-    requestTTS(text, lang, messageId, isAutoplay);
+    console.warn("[TTS] Cache check network error");
+    callback(null);
   };
   xhr.send();
 }
 
-function requestTTS(text, lang, messageId, isAutoplay) {
+function generateTTS(text, messageId, callback) {
   var xhr = new XMLHttpRequest();
   xhr.open("POST", "/api/tts", true);
   xhr.setRequestHeader("Content-Type", "application/json");
@@ -184,84 +558,188 @@ function requestTTS(text, lang, messageId, isAutoplay) {
     if (xhr.status === 200) {
       try {
         var resp = JSON.parse(xhr.responseText);
-        if (resp.url) {
-          playAudio(resp.url, isAutoplay);
-        } else {
-          console.warn("[TTS] No audio URL in response:", resp);
-          fallbackToWebSpeech(text, lang);
-        }
-      } catch (e) {
-        console.warn("[TTS] Failed to parse response:", e);
-        fallbackToWebSpeech(text, lang);
-      }
-    } else {
-      console.warn("[TTS] Backend TTS failed (status:", xhr.status, "), falling back to Web Speech");
-      fallbackToWebSpeech(text, lang);
+        callback(resp.url || null);
+        return;
+      } catch (e) {}
     }
+    console.warn("[TTS] Generation failed with status:", xhr.status);
+    callback(null);
   };
   xhr.onerror = function () {
-    console.warn("[TTS] Network error calling backend TTS, falling back to Web Speech");
-    fallbackToWebSpeech(text, lang);
+    console.warn("[TTS] Generation network error");
+    callback(null);
   };
-  var payload = { text: text, voice: "pm_alex", speed: 1 };
+  var payload = { text: text };
   if (messageId) payload.messageId = messageId;
   xhr.send(JSON.stringify(payload));
 }
 
-function playAudio(url, isAutoplay) {
-  var audio = new Audio(url);
-  audio.volume = 1.0;
-  audio.onended = function () {
-    activeAudio = null;
-    updateTTSButtons(false);
-  };
-  audio.onerror = function () {
-    console.warn("[TTS] Audio playback error, falling back to Web Speech");
-    activeAudio = null;
-    updateTTSButtons(false);
-  };
-  if (isAutoplay) {
-    audio.play().catch(function (e) {
-      console.warn("[TTS] Autoplay blocked:", e);
-      // Don't fallback for autoplay, just show play button
+function playAudio(url, isAutoplay, onFail) {
+  var ctx = ttsAudioContext;
+  if (isAudioContextRunning(ctx)) {
+    // WebAudio works without a user gesture — preferred on Android
+    playViaWebAudio(url, isAutoplay, function () {
+      playViaHtmlAudio(url, isAutoplay, onFail);
     });
-  } else {
-    audio.play().catch(function () { console.warn("[TTS] Playback blocked"); });
+    return;
   }
-  activeAudio = audio;
-  updateTTSButtons(true);
+  playViaHtmlAudio(url, isAutoplay, onFail);
 }
 
-function fallbackToWebSpeech(text, lang) {
-  if (!window.speechSynthesis) {
+function playViaHtmlAudio(url, isAutoplay, onFail) {
+  var audio = new Audio(url);
+  audio.volume = 1.0;
+  var done = false;
+  var watchdog = null;
+  var waitRounds = 0;
+
+  function cleanup() {
+    if (watchdog) { clearTimeout(watchdog); watchdog = null; }
+  }
+
+  function finishFail(reason) {
+    if (done || audio._ttsCancelled) return;
+    done = true;
+    cleanup();
+    console.warn("[TTS] Playback failed:", reason, "| autoplay=" + !!isAutoplay, "| url=" + url);
+    if (activeAudio === audio) activeAudio = null;
+    updateTTSButtons(false);
+    if (typeof onFail === "function") onFail(reason);
+  }
+
+  function markStarted() {
+    if (done || audio._ttsCancelled) return;
+    done = true;
+    cleanup();
+    pendingPlayAttempts = 0;
+    console.log("[TTS] Playback started:", url);
+  }
+
+  audio.onended = function () {
+    if (activeAudio === audio) activeAudio = null;
+    done = true;
+    cleanup();
+    updateTTSButtons(false);
+  };
+
+  audio.onerror = function () {
+    finishFail("media error event (readyState=" + audio.readyState + ")");
+  };
+
+  // "playing" only fires when audio actually starts rendering — this is the
+  // only trusted success signal on old Android WebViews
+  audio.addEventListener("playing", markStarted);
+
+  audio.addEventListener("canplay", function () {
+    if (done || audio._ttsCancelled) return;
+    if (audio.paused) attemptPlay();
+  });
+
+  function armWatchdog() {
+    cleanup();
+    watchdog = setTimeout(function check() {
+      watchdog = null;
+      if (done || audio._ttsCancelled) return;
+      if (audio.paused) {
+        if (audio.readyState >= 2) {
+          finishFail("paused despite buffered data (readyState=" + audio.readyState + ")");
+          return;
+        }
+      }
+      if (++waitRounds > 15) {
+        finishFail("timeout: playback never started (readyState=" + audio.readyState + ", paused=" + audio.paused + ")");
+        return;
+      }
+      watchdog = setTimeout(check, 2000);
+    }, 2500);
+  }
+
+  function attemptPlay() {
+    if (done || audio._ttsCancelled) return;
+    if (!audio.paused) { armWatchdog(); return; }
+    try {
+      if (audio.readyState === 0 && typeof audio.load === "function") {
+        audio.load(); // old Android/WebKit quirk: explicit load() before play()
+      }
+      var p = audio.play();
+      if (p && typeof p.then === "function") {
+        p.then(null, function (err) {
+          finishFail("play() rejected: " + ((err && (err.name || err.message)) || err));
+        });
+      }
+    } catch (e) {
+      finishFail("play() exception: " + ((e && e.message) || e));
+    }
+    armWatchdog();
+  }
+
+  activeAudio = audio;
+  updateTTSButtons(true);
+  attemptPlay(); // called synchronously so it still counts as a user gesture when possible
+}
+
+function fallbackToWebSpeech(text, lang, fallbackUrl) {
+  if (!window.speechSynthesis || typeof SpeechSynthesisUtterance === "undefined") {
     console.warn("[TTS] Web Speech API not available");
-    return;
+    return false;
   }
   try {
     if (activeAudio) {
-      window.speechSynthesis.cancel();
+      if (typeof activeAudio.pause === "function") {
+        try { activeAudio.pause(); } catch (e) {}
+        activeAudio._ttsCancelled = true;
+        activeAudio = null;
+      } else if (window.speechSynthesis) {
+        try { window.speechSynthesis.cancel(); } catch (e) {}
+      }
     }
     var utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = lang || "pt-BR";
     utterance.rate = 1.0;
     utterance.pitch = 1.0;
     utterance.volume = 1.0;
-    utterance.onend = function () { activeAudio = null; };
-    utterance.onerror = function () { activeAudio = null; };
+    utterance.onend = function () {
+      if (activeAudio === utterance) activeAudio = null;
+      updateTTSButtons(false);
+    };
+    utterance.onerror = function (e) {
+      if (activeAudio === utterance) activeAudio = null;
+      updateTTSButtons(false);
+      console.warn("[TTS] speechSynthesis error:", (e && (e.error || e.message)) || e);
+      var errCode = e && e.error;
+      if (fallbackUrl && errCode !== "interrupted" && errCode !== "canceled") armPendingPlay(fallbackUrl);
+    };
     activeAudio = utterance;
     window.speechSynthesis.speak(utterance);
+    updateTTSButtons(true);
+    console.log("[TTS] Using Web Speech fallback");
+    return true;
   } catch (e) {
     console.warn("[TTS] Web Speech fallback error:", e);
+    activeAudio = null;
+    return false;
   }
 }
 
 function stopSpeaking() {
-  if (activeAudio) {
-    activeAudio.pause();
-    activeAudio.src = "";
-    activeAudio = null;
-    updateTTSButtons(false);
+  if (ttsFallbackTimer) {
+    clearTimeout(ttsFallbackTimer);
+    ttsFallbackTimer = null;
   }
+  ttsResolved = true;
+  cancelPendingPlay();
+  var a = activeAudio;
+  activeAudio = null;
+  if (a) {
+    if (typeof a.pause === "function") {
+      a._ttsCancelled = true; // tells playAudio watchdogs to stay quiet
+      try { a.pause(); } catch (e) {}
+      try { a.src = ""; } catch (e) {}
+    } else if (window.speechSynthesis) {
+      try { window.speechSynthesis.cancel(); } catch (e) {}
+    }
+  }
+  updateTTSButtons(false);
 }
 
 function playVoiceMessage(btn) {
@@ -269,7 +747,11 @@ function playVoiceMessage(btn) {
   if (!audioId) return;
   var audio = new Audio("/audio/" + audioId);
   audio.volume = 1.0;
-  audio.play().catch(function () { console.warn("[voice] Playback blocked"); });
+  try {
+    audio.play();
+  } catch (e) {
+    console.warn("[voice] play exception:", e);
+  }
 }
 
 function playTTSForElement(btn) {
@@ -398,7 +880,7 @@ function httpGet(url, callback) {
 }
 
 function loadSessions() {
-  httpGet("/sessions", function (html) {
+  httpGet("/sessions/html", function (html) {
     var sessionsList = document.getElementById("sessionsList");
     if (sessionsList) {
       sessionsList.innerHTML = html;
