@@ -254,6 +254,16 @@ export const audioRoutes: FastifyPluginAsyncZod = async (fastify) => {
       formData.append("temperature", "0.3");
       formData.append("vad_filter", "true");
 
+      const PUBLIC_DIR = path.join(process.cwd(), "..", "public");
+      const UPLOADS_DIR = path.join(PUBLIC_DIR, "audio", "uploads");
+      if (!fs.existsSync(UPLOADS_DIR)) {
+        fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+      }
+      const fileName = data.filename || `upload-${Date.now()}.webm`;
+      const filePath = path.join(UPLOADS_DIR, fileName);
+      fs.writeFileSync(filePath, audioBuffer);
+      const audioPathSaved = `/audio/uploads/${fileName}`;
+
       const response = await fetch(`${speachesUrl}/v1/audio/transcriptions`, {
         method: "POST",
         headers: {
@@ -271,7 +281,7 @@ export const audioRoutes: FastifyPluginAsyncZod = async (fastify) => {
       const result = await response.json() as { text: string; segments?: unknown[] };
 
       return {
-        audioPath: (data as { path?: string }).path ?? "",
+        audioPath: audioPathSaved,
         fileName: data.filename,
         size: audioBuffer.length,
         mimetype: data.mimetype,
