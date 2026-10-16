@@ -50,7 +50,6 @@ export async function registerPlugins(app: FastifyInstance): Promise<void> {
     },
     staticCSP: true,
     initOAuth: {},
-    specPath: "/api-docs/json",
   });
 }
 

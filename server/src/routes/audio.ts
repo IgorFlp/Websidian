@@ -312,10 +312,6 @@ export const audioRoutes: FastifyPluginAsyncZod = async (fastify) => {
   fastify.get("/audio/stream/:id", {
     schema: {
       params: z.object({ id: z.string().min(1) }),
-      response: {
-        200: z.string(),
-        404: z.object({ error: z.string() }),
-      },
       hide: true,
     },
   }, async (request, reply) => {

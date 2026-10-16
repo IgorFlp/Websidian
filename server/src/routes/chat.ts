@@ -86,7 +86,7 @@ export const chatRoutes: FastifyPluginAsyncZod = async (fastify) => {
     } catch (err) {
       const error = err as { status?: number; message?: string };
       if (error.status === 404) {
-        return reply.status(404).send({ error: error.message });
+        return reply.status(404).send({ error: error.message ?? "Not found" });
       }
       return reply.status(500).send({ error: error.message || "Internal server error" });
     }
