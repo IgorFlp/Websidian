@@ -49,8 +49,8 @@
     - [ ] Listar requisitos de compatibilidade (Android 4 WebKit, somente XMLHttpRequest, sem WebSocket/EventSource)
 - [x] US01-T06 - Implementação do frontend 📅 2026-10-02 ✅ 2026-10-02
 - [ ] US02 - Melhoria de robustes
-    - [ ] US02-T01 - Criar especificação do refactor 📅 2026-10-14
-    - [ ] US02-T02 - Aplicar especificação do refactor (critérios de aceite) 📅 2026-10-14
+    - [x] US02-T01 - Criar especificação do refactor 📅 2026-10-14 ✅ 2026-10-16
+    - [x] US02-T02 - Aplicar especificação do refactor (critérios de aceite) 📅 2026-10-14 ✅ 2026-10-16
     - [ ] US02-T03 - Criar especificação de melhoria com ID e estrutura de dados 📅 2026-10-15
     - [ ] US02-T04 - Aplicação da especificação de melhoria 📅 2026-10-15
 - [ ] US03 - Melhoria de UX
