@@ -9,7 +9,7 @@ const authService = new AuthService();
 const emptyResponseSchema = z.object({});
 
 export const staticRoutes: FastifyPluginAsyncZod = async (fastify) => {
-  const publicDir = path.join(process.cwd(), "public");
+  const publicDir = path.join(process.cwd(), "..", "public");
 
   fastify.get("/", {
     schema: {
@@ -17,7 +17,7 @@ export const staticRoutes: FastifyPluginAsyncZod = async (fastify) => {
       hide: true,
     },
   }, async (request, reply) => {
-    const isAuthenticated = authService.isAuthenticated(request.session as Record<string, unknown> | undefined);
+    const isAuthenticated = authService.isAuthenticated(request.session as unknown as Record<string, unknown> | undefined);
     if (isAuthenticated) {
       const indexPath = path.join(publicDir, "index.html");
       if (fs.existsSync(indexPath)) {
@@ -25,36 +25,6 @@ export const staticRoutes: FastifyPluginAsyncZod = async (fastify) => {
       }
     }
     return reply.redirect("/login");
-  });
-
-  fastify.get("/components/*", {
-    schema: { response: { 200: emptyResponseSchema }, hide: true },
-  }, async (request, reply) => {
-    const filePath = path.join(publicDir, "components", (request.params as { "*": string })["*"]);
-    if (fs.existsSync(filePath)) {
-      return reply.sendFile(filePath);
-    }
-    return reply.status(404).send("Not found");
-  });
-
-  fastify.get("/audios/*", {
-    schema: { response: { 200: emptyResponseSchema }, hide: true },
-  }, async (request, reply) => {
-    const filePath = path.join(publicDir, "audios", (request.params as { "*": string })["*"]);
-    if (fs.existsSync(filePath)) {
-      return reply.sendFile(filePath);
-    }
-    return reply.status(404).send("Not found");
-  });
-
-  fastify.get("/audio/*", {
-    schema: { response: { 200: emptyResponseSchema }, hide: true },
-  }, async (request, reply) => {
-    const filePath = path.join(publicDir, "audio", (request.params as { "*": string })["*"]);
-    if (fs.existsSync(filePath)) {
-      return reply.sendFile(filePath);
-    }
-    return reply.status(404).send("Not found");
   });
 };
 

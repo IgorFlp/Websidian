@@ -24,6 +24,7 @@ export interface Config {
   ttsModel: string;
   ttsVoice: string;
   ttsLanguage: string;
+  ttsSpeed: number;
   audioMaxEntries: number;
   dataDir: string;
   publicDir: string;
@@ -54,6 +55,14 @@ function getEnvBool(key: string, defaultValue: boolean): boolean {
   return value !== "false" && value !== "0";
 }
 
+function getEnvFloat(key: string, defaultValue: number): number {
+  const value = process.env[key];
+  if (value === undefined) return defaultValue;
+  const parsed = parseFloat(value);
+  if (isNaN(parsed)) throw new Error(`Invalid float for ${key}: ${value}`);
+  return parsed;
+}
+
 export const config: Config = {
   vaultPath: getEnv("VAULT_PATH", "/vault"),
   sessionSecret: getEnv("SESSION_SECRET"),
@@ -70,6 +79,7 @@ export const config: Config = {
   ttsModel: getEnv("TTS_MODEL", "speaches-ai/Kokoro-82M-v1.0-ONNX"),
   ttsVoice: getEnv("TTS_VOICE", "pm_alex"),
   ttsLanguage: getEnv("TTS_LANGUAGE", "pt"),
+  ttsSpeed: getEnvFloat("TTS_SPEED", 1.0),
   audioMaxEntries: getEnvInt("AUDIO_MAX_ENTRIES", 10),
   dataDir: getEnv("DATA_DIR", "/data"),
   publicDir: getEnv("PUBLIC_DIR", "/public"),

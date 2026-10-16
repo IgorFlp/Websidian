@@ -31,7 +31,7 @@ async function buildApp(): Promise<FastifyInstance> {
 
   // Register static plugin after routes to avoid intercepting /login and other routes
   await app.register(fastifyStatic, {
-    root: path.join(process.cwd(), "public"),
+    root: path.join(process.cwd(), "..", "public"),
     prefix: "/",
   });
 
