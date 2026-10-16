@@ -56,15 +56,16 @@ export const audioRoutes: FastifyPluginAsyncZod = async (fastify) => {
     },
   }, async (request, reply) => {
     try {
-      const { text, voice = "pm_alex", speed = 1, messageId } = request.body as { text: string; voice?: string; speed?: number; messageId?: string };
+      const { text, voice = config.ttsVoice, language = config.ttsLanguage, speed = config.ttsSpeed || 1, messageId } = request.body as { text: string; voice?: string; language?: string; speed?: number; messageId?: string };
 
       const speachesUrl = config.speachesApiUrl;
       const apiKey = config.speachesApiKey;
 
       const payload = {
-        model: "speaches-ai/Kokoro-82M-v1.0-ONNX",
+        model: config.ttsModel,
         input: text,
         voice,
+        language,
         response_format: "mp3",
         speed,
       };
@@ -106,7 +107,7 @@ export const audioRoutes: FastifyPluginAsyncZod = async (fastify) => {
       const audioBuffer = await response.arrayBuffer();
       const audioData = Buffer.from(audioBuffer);
 
-      const PUBLIC_DIR = path.join(process.cwd(), "public");
+      const PUBLIC_DIR = path.join(process.cwd(), "..", "public");
       const AUDIOS_DIR = path.join(PUBLIC_DIR, "audio");
       if (!fs.existsSync(AUDIOS_DIR)) {
         fs.mkdirSync(AUDIOS_DIR, { recursive: true });
@@ -137,7 +138,7 @@ export const audioRoutes: FastifyPluginAsyncZod = async (fastify) => {
   }, async (request, reply) => {
     try {
       const { messageId } = request.params as { messageId: string };
-      const PUBLIC_DIR = path.join(process.cwd(), "public");
+      const PUBLIC_DIR = path.join(process.cwd(), "..", "public");
       const AUDIOS_DIR = path.join(PUBLIC_DIR, "audio");
       const fileName = `tts-${messageId}.mp3`;
       const filePath = path.join(AUDIOS_DIR, fileName);
@@ -298,7 +299,7 @@ export const audioRoutes: FastifyPluginAsyncZod = async (fastify) => {
     };
   });
 
-  fastify.get("/audio/:id", {
+  fastify.get("/audio/stream/:id", {
     schema: {
       params: z.object({ id: z.string().min(1) }),
       response: {

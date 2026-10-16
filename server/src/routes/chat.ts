@@ -5,6 +5,7 @@ import { AudioFileManager } from "../service/audio.service.js";
 import { HTMLRenderer } from "../service/html.renderer.js";
 import { HTMLRepository } from "../service/html.repository.js";
 import { HermesClient } from "../service/hermes.client.js";
+import { SessionsService } from "../service/sessions.service.js";
 import fs from "fs";
 import os from "os";
 import path from "path";
@@ -13,6 +14,7 @@ const audioFileManager = new AudioFileManager();
 const htmlRenderer = new HTMLRenderer();
 const htmlRepository = new HTMLRepository();
 const hermesClient = new HermesClient();
+const sessionsService = new SessionsService(htmlRenderer, hermesClient);
 const chatService = new ChatService(audioFileManager, htmlRenderer, htmlRepository, hermesClient);
 
 const chatRequestSchema = z.object({
@@ -113,14 +115,37 @@ export const chatRoutes: FastifyPluginAsyncZod = async (fastify) => {
         offset: z.coerce.number().int().nonnegative().optional().default(0),
       }),
       response: {
+        200: z.array(z.object({
+          sessionId: z.string(),
+          title: z.string(),
+          createdAt: z.number(),
+        })),
+      },
+    },
+  }, async (request, reply) => {
+    const { limit, offset } = request.query as { limit?: number; offset?: number };
+    const sessions = await sessionsService.getSessions(limit, offset);
+    return sessions.map((s: any) => ({
+      sessionId: s.id || s.sessionId,
+      title: s.title || `Chat ${s.id?.slice(0, 8) || 'unknown'}`,
+      createdAt: s.createdAt || s.created_at || s.lastActivity || Date.now(),
+    }));
+  });
+
+  fastify.get("/sessions/html", {
+    schema: {
+      querystring: z.object({
+        limit: z.coerce.number().int().positive().max(100).optional().default(20),
+        offset: z.coerce.number().int().nonnegative().optional().default(0),
+      }),
+      response: {
         200: z.string(),
       },
     },
   }, async (request, reply) => {
     const { limit, offset } = request.query as { limit?: number; offset?: number };
-    // Use htmlRepository or sessionsService
     reply.header("Content-Type", "text/html");
-    return "";
+    return sessionsService.getSessionsHTML(limit, offset);
   });
 
   fastify.post("/sessions", {
@@ -140,8 +165,9 @@ export const chatRoutes: FastifyPluginAsyncZod = async (fastify) => {
     try {
       const sessionTitle = title || `Chat ${new Date().toLocaleString()} ${Math.random().toString(36).slice(2, 8)}`;
       const session = await hermesClient.createSession(sessionTitle);
+      const sessionId = (session as any).session?.id || (session as any).id || (session as any).sessionId;
       return reply.status(201).send({
-        sessionId: session.sessionId,
+        sessionId,
         title: sessionTitle,
         createdAt: Date.now(),
       });
