@@ -15,6 +15,7 @@ export interface Config {
   appPassword: string;
   hermesApiUrl: string;
   hermesApiKey: string;
+  hermesModel: string;
   speachesApiUrl: string;
   speachesApiKey: string;
   kokoroApiUrl: string;
@@ -70,6 +71,7 @@ export const config: Config = {
   appPassword: getEnv("APP_PASSWORD"),
   hermesApiUrl: getEnv("HERMES_API_URL", "http://localhost:8642").replace(/\/$/, ""),
   hermesApiKey: getEnv("HERMES_API_KEY", ""),
+  hermesModel: getEnv("HERMES_MODEL", "hermes-agent"),
   speachesApiUrl: getEnv("SPEACHES_API_URL", "http://localhost:8000"),
   speachesApiKey: getEnv("SPEACHES_API_KEY", ""),
   kokoroApiUrl: getEnv("KOKORO_API_URL", ""),

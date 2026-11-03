@@ -51,13 +51,19 @@
 - [ ] US02 - Melhoria de robustes
     - [x] US02-T01 - Criar especificação do refactor 📅 2026-10-14 ✅ 2026-10-16
     - [x] US02-T02 - Aplicar especificação do refactor (critérios de aceite) 📅 2026-10-14 ✅ 2026-10-16
-    - [ ] US02-T03 - Criar especificação de melhoria com ID e estrutura de dados 📅 2026-10-15
-    - [ ] US02-T04 - Aplicação da especificação de melhoria 📅 2026-10-15
-- [ ] US03 - Melhoria de UX
-    - [ ] US03-T01 - Criar retorno incremental para front (stt,texto,tts) 📅 2026-10-19
-    - [x] US03-T02 - Testar modelo de STT maior ou sem limpeza de pausas no áudio 📅 2026-10-19
-    - [ ] US03-T03 - Vincular o play ao áudio do cache 📅 2026-10-19
+    - [x] US02-T03 - Criar especificação de melhoria com ID e estrutura de dados 📅 2026-10-15 ✅ 2026-10-16
+    - [x] US02-T04 - Aplicação da especificação de melhoria 📅 2026-10-15 ✅ 2026-10-16
+- [ ] US03 - Melhoria de Ux
+    - [ ] US03-T01 - Refatorar Chat de polling -> Event based rendering 📅 2026-10-19
+    - [ ] US03-T02 - Melhorias de estilo 📅 2026-10-19
+        - [ ] Animação para Audio sendo gerado após play
+        - [ ] Animação para Resposta sendo gerada após send
+        - [ ] Centralização e correção de icons
+        - [ ] Troca de icons com base no estado do botão (play - gerando - pause)
+    - [ ] US03-T03 - Adicionar player de recording na mensagem do usuário abaixo do texto 📅 2026-10-19
     - [ ] US03-T04 - Adicionar texto selecionável 📅 2026-10-19
+    - [ ] US03-T05 - Fixar Debugger no topo direito do chat container e mudar o icone 📅 2026-10-19
+    - [ ] US03-T06 - Implementar seletor de sessions para exclusão 📅 2026-10-19
     - [ ] Criar página HTML mínima com:
         <div id=\"terminal\" style=\"white-space:pre-wrap; font-family:monospace;\"></div>
         <input id=\"cmd\" type=\"text\" placeholder=\"Digite o comando…\"> + botão Enviar (ou captura de Enter)
@@ -68,8 +74,22 @@
         Insere resp.html no <div id=\"terminal\"> via insertAdjacentHTML('beforeend', resp.html)
         Rolagem automática para o bottom (terminal.scrollTop = terminal.scrollHeight)
         Para cada objeto em resp.audio, cria elemento <audio src=\"url\" controls autoplay> e o anexa após o último caractere inserido (ou adiciona a uma fila de reprodução)
-    - [ ] Implementar envio de comando: ao clicar em Enviar ou pressionar Enter, fazer POST a /terminal/input com {data: texto + \"\\n\"}
+    - [ ] Implementar envio de comando: ao clicar em Enviar ou pressionar Enter, fazer POST a /terminal/input com {data: texto + \"\\\\n\"}
     - [ ] Adicionar tratamento de erros de rede (tentar novamente após 2s, exibir mensagem de aviso)
     - [ ] Testar a página em um emulador ou dispositivo Android 4 (ou navegador que simule aquele nível de suporte)
     - [ ] Verificar que o texto aparece com as mesmas cores/estilos do Hermes CLI e que o áudio é reproduzido automaticamente
     - [ ] Verificar que não há vazamento de memória (limpar elementos de áudio muito antigos se necessario)
+
+- [ ] US04 - Integração de profiles e providers
+    - [ ] US04-T01 - Integrar profile alfred com hermes dockerizado
+    - [ ] US04-T02 - Permitir alteração nos arquivos do profile de forma dinamica e versionada
+    - [ ] US04-T03 - Implementar seleção de profile no front
+    - [ ] US04-T04 - Implementar seleção de provider/model no front e backend
+
+- [ ] US05 - Websidian MCP
+    - [ ] US05-T01 - Descrever endpoints (action based) com base na API
+    - [ ] US05-T02 - Criar rascunho do planejamento em reunião com a IA
+    - [ ] US05-T03 - Criar a spec completa da alteração
+    - [ ] US05-T04 - Aplicar a spec da alteração
+
+- [ ] US06 - Hermes button na page schedule
