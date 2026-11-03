@@ -6,17 +6,17 @@ import { config } from "../config/index.js";
 const authService = new AuthService();
 
 const loginBodySchema = z.object({
-  username: z.string().min(1),
-  password: z.string().min(1),
+  username: z.string().min(1).describe("Username (e.g., admin)"),
+  password: z.string().min(1).describe("Password (e.g., password123)"),
 }).or(z.object({
-  user: z.string().min(1),
-  pass: z.string().min(1),
+  user: z.string().min(1).describe("Username (e.g., admin)"),
+  pass: z.string().min(1).describe("Password (e.g., password123)"),
 }));
 
 const vaultsResponseSchema = z.array(z.object({
-  id: z.number(),
-  name: z.string(),
-  fullPath: z.string(),
+  id: z.number().describe("Vault ID (e.g., 0)"),
+  name: z.string().describe("Vault name (e.g., Main Vault)"),
+  fullPath: z.string().describe("Full vault path (e.g., /vault/main)"),
 }));
 
 export const authRoutes: FastifyPluginAsyncZod = async (fastify) => {

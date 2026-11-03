@@ -5,33 +5,33 @@ import { TasksService } from "../service/tasks.service.js";
 const tasksService = new TasksService();
 
 const scanTasksQuerySchema = z.object({
-  path: z.string().optional().default(""),
-  vault: z.coerce.number().int().nonnegative().optional().default(0),
+  path: z.string().optional().default("").describe("Path prefix to filter tasks (e.g., notes/)"),
+  vault: z.coerce.number().int().nonnegative().optional().default(0).describe("Vault index (e.g., 0)"),
 });
 
 const taskSchema = z.object({
-  text: z.string(),
-  done: z.boolean(),
-  due: z.string().nullable(),
-  scheduled: z.string().nullable(),
-  doneDate: z.string().nullable(),
-  tags: z.array(z.string()),
-  recurring: z.boolean(),
-  recurringRule: z.string().nullable(),
-  displayText: z.string(),
-  file: z.string(),
-  line: z.number().int(),
-  vaultIndex: z.number().int(),
+  text: z.string().describe("Task text (e.g., Complete the project)"),
+  done: z.boolean().describe("Task completion status (e.g., false)"),
+  due: z.string().nullable().describe("Due date (e.g., 2024-01-20)"),
+  scheduled: z.string().nullable().describe("Scheduled date (e.g., 2024-01-15)"),
+  doneDate: z.string().nullable().describe("Completion date (e.g., null)"),
+  tags: z.array(z.string()).describe("Tags (e.g., [\"work\", \"urgent\"])"),
+  recurring: z.boolean().describe("Recurring flag (e.g., false)"),
+  recurringRule: z.string().nullable().describe("Recurring rule (e.g., null)"),
+  displayText: z.string().describe("Display text (e.g., Complete the project)"),
+  file: z.string().describe("File path (e.g., notes/tasks.md)"),
+  line: z.number().int().describe("Line number (e.g., 5)"),
+  vaultIndex: z.number().int().describe("Vault index (e.g., 0)"),
 });
 
 const taskToggleRequestSchema = z.object({
-  file: z.string().min(1),
-  line: z.number().int(),
-  vault: z.coerce.number().int().nonnegative().optional().default(0),
+  file: z.string().min(1).describe("File path (e.g., notes/tasks.md)"),
+  line: z.number().int().describe("Line number (e.g., 5)"),
+  vault: z.coerce.number().int().nonnegative().optional().default(0).describe("Vault index (e.g., 0)"),
 });
 
 const taskToggleResponseSchema = z.object({
-  ok: z.boolean(),
+  ok: z.boolean().describe("Success flag (e.g., true)"),
   task: taskSchema.optional(),
 });
 

@@ -18,40 +18,40 @@ const sessionsService = new SessionsService(htmlRenderer, hermesClient);
 const chatService = new ChatService(audioFileManager, htmlRenderer, htmlRepository, hermesClient);
 
 const chatRequestSchema = z.object({
-  input: z.string().min(1),
-  sessionId: z.string().optional(),
-  audio: z.string().optional(),
+  input: z.string().min(1).describe("User input (e.g., Hello, how are you?)"),
+  sessionId: z.string().optional().describe("Session ID (e.g., session-123)"),
+  audio: z.string().optional().describe("Base64 encoded audio data"),
 });
 
 const chatResponseSchema = z.object({
-  sessionId: z.string(),
-  html: z.string(),
+  sessionId: z.string().describe("Session ID (e.g., session-123)"),
+  html: z.string().describe("Response HTML (e.g., <div>Response content</div>)"),
   audio: z.array(z.object({
-    id: z.string(),
-    url: z.string(),
-    text: z.string(),
-    duration: z.string(),
+    id: z.string().describe("Audio ID (e.g., audio-456)"),
+    url: z.string().describe("Audio URL (e.g., /audio/stream/audio-456)"),
+    text: z.string().describe("Audio text (e.g., Audio response text)"),
+    duration: z.string().describe("Duration (e.g., 2.5s)"),
   })),
-  streaming: z.boolean(),
+  streaming: z.boolean().describe("Streaming flag (e.g., false)"),
 });
 
 const messagesParamsSchema = z.object({
-  sessionId: z.string().min(1),
+  sessionId: z.string().min(1).describe("Session ID (e.g., session-123)"),
 });
 
 const sessionsQuerySchema = z.object({
-  limit: z.coerce.number().int().positive().max(100).optional().default(20),
-  offset: z.coerce.number().int().nonnegative().optional().default(0),
+  limit: z.coerce.number().int().positive().max(100).optional().default(20).describe("Limit (e.g., 20)"),
+  offset: z.coerce.number().int().nonnegative().optional().default(0).describe("Offset (e.g., 0)"),
 });
 
 const createSessionRequestSchema = z.object({
-  title: z.string().min(1).optional(),
+  title: z.string().min(1).optional().describe("Session title (e.g., New Chat Session)"),
 });
 
 const sessionSchema = z.object({
-  sessionId: z.string(),
-  title: z.string(),
-  createdAt: z.number(),
+  sessionId: z.string().describe("Session ID (e.g., session-123)"),
+  title: z.string().describe("Session title (e.g., Chat Session)"),
+  createdAt: z.number().describe("Creation timestamp (e.g., 1705315200000)"),
 });
 
 export const chatRoutes: FastifyPluginAsyncZod = async (fastify) => {
