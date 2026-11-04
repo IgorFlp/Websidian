@@ -1,6 +1,7 @@
 import { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
-import { TasksService } from "../service/tasks.service.js";
+import { TasksService, type TaskFilter } from "../service/tasks.service.js";
+import { config } from "../config/index.js";
 
 const tasksService = new TasksService();
 
@@ -35,6 +36,44 @@ const taskToggleResponseSchema = z.object({
   task: taskSchema.optional(),
 });
 
+const taskFilterSchema = z.object({
+  vault: z.coerce.number().int().nonnegative().optional().default(0).describe("Vault index"),
+  path: z.string().optional().default("").describe("Path prefix to filter tasks"),
+  files: z.array(z.string()).optional().describe("Specific files to include"),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("Start date for range filter (YYYY-MM-DD)"),
+  finishDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("End date for range filter (YYYY-MM-DD)"),
+  Done: z.boolean().optional().default(true).describe("Include completed tasks (default true)"),
+  Scheduled: z.boolean().optional().default(true).describe("Include scheduled tasks (default true)"),
+  Due: z.boolean().optional().default(true).describe("Include tasks with due date (default true)"),
+});
+
+function requireApiKeyOrSession(request: any, reply: any, done: () => void) {
+  const authHeader = request.headers.authorization;
+  const apiKey = config.mcpApiKey;
+
+  // If no MCP_API_KEY configured, return 503 for MCP endpoints
+  if (!apiKey) {
+    return reply.status(503).send({ error: "MCP not configured" });
+  }
+
+  // Check for API_KEY auth
+  if (authHeader?.startsWith("Bearer ")) {
+    const providedKey = authHeader.slice(7);
+    if (providedKey === apiKey) {
+      return done();
+    }
+    return reply.status(401).send({ error: "Invalid API key" });
+  }
+
+  // Check for session auth
+  const session = request.session as any;
+  if (session?.auth === true) {
+    return done();
+  }
+
+  return reply.status(401).send({ error: "API key required" });
+}
+
 export const tasksRoutes: FastifyPluginAsyncZod = async (fastify) => {
   fastify.get("/api/tasks", {
     schema: {
@@ -45,10 +84,41 @@ export const tasksRoutes: FastifyPluginAsyncZod = async (fastify) => {
       },
     },
   }, async (request, reply) => {
+    // Log deprecation warning
+    fastify.log.warn("GET /api/tasks deprecated, use POST /api/tasks/list");
+
     const { path: pathPrefix, vault } = request.query as { path?: string; vault?: number };
     try {
-      const tasks = tasksService.scanTasks(vault, pathPrefix);
+      const tasks = tasksService.scanTasks(vault ?? 0, pathPrefix ?? "");
       return tasks;
+    } catch (err) {
+      return reply.status(500).send({ error: err instanceof Error ? err.message : "Error scanning tasks" });
+    }
+  });
+
+  fastify.post("/api/tasks/list", {
+    schema: {
+      body: taskFilterSchema,
+      response: {
+        200: z.array(taskSchema),
+        400: z.object({ error: z.string() }),
+        401: z.object({ error: z.string() }),
+        500: z.object({ error: z.string() }),
+        503: z.object({ error: z.string() }),
+      },
+    },
+    preHandler: requireApiKeyOrSession,
+  }, async (request, reply) => {
+    const filter = request.body as TaskFilter;
+    try {
+      // Validate date range: both startDate and finishDate must be provided together
+      if ((filter.startDate && !filter.finishDate) || (!filter.startDate && filter.finishDate)) {
+        return reply.status(400).send({ error: "Both startDate and finishDate must be provided together" });
+      }
+
+      const tasks = tasksService.scanTasks(filter.vault ?? 0, filter.path ?? "");
+      const filtered = tasksService.filterTasks(tasks, filter);
+      return filtered;
     } catch (err) {
       return reply.status(500).send({ error: err instanceof Error ? err.message : "Error scanning tasks" });
     }
