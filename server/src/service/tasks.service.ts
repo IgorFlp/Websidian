@@ -28,6 +28,17 @@ export interface ToggleTaskOptions {
   vaultIndex: number;
 }
 
+export interface TaskFilter {
+  vault?: number;
+  path?: string;
+  files?: string[];
+  startDate?: string;
+  finishDate?: string;
+  Done?: boolean;
+  Scheduled?: boolean;
+  Due?: boolean;
+}
+
 export class TasksService {
   private vaultPaths: string[];
 
@@ -39,7 +50,7 @@ export class TasksService {
     return this.vaultPaths[vaultIndex] ?? this.vaultPaths[0] ?? "";
   }
 
-parseTask(line: string): ParsedTask | null {
+  parseTask(line: string): ParsedTask | null {
     if (!line || typeof line !== "string") return null;
 
     const task: ParsedTask = {
@@ -137,6 +148,65 @@ parseTask(line: string): ParsedTask | null {
 
     scan(scanPath);
     return tasks;
+  }
+
+  filterTasks(tasks: Task[], filter: TaskFilter): Task[] {
+    const {
+      vault,
+      path: pathPrefix,
+      files,
+      startDate,
+      finishDate,
+      Done = true,
+      Scheduled = true,
+      Due = true,
+    } = filter;
+
+    // Filter by vault and path prefix first (these are applied at scan time typically)
+    // but we keep them here for completeness if called with unscanned tasks
+    let filtered = tasks;
+
+    if (vault !== undefined) {
+      filtered = filtered.filter((t) => t.vaultIndex === vault);
+    }
+
+    if (pathPrefix) {
+      filtered = filtered.filter((t) => t.file.startsWith(pathPrefix));
+    }
+
+    if (files && files.length > 0) {
+      filtered = filtered.filter((t) => files.includes(t.file));
+    }
+
+    // Date range filtering: if both startDate and finishDate provided, include tasks
+    // where ANY of (scheduled, due, doneDate) falls within [startDate, finishDate]
+    if (startDate && finishDate) {
+      const start = new Date(startDate).getTime();
+      const finish = new Date(finishDate).getTime();
+
+      filtered = filtered.filter((task) => {
+        const dates = [task.scheduled, task.due, task.doneDate].filter(Boolean) as string[];
+        return dates.some((dateStr) => {
+          const date = new Date(dateStr).getTime();
+          return date >= start && date <= finish;
+        });
+      });
+    }
+
+    // Boolean flag filtering: when false, exclude tasks with those properties
+    if (Done === false) {
+      filtered = filtered.filter((task) => !task.done);
+    }
+
+    if (Scheduled === false) {
+      filtered = filtered.filter((task) => !task.scheduled);
+    }
+
+    if (Due === false) {
+      filtered = filtered.filter((task) => !task.due);
+    }
+
+    return filtered;
   }
 
   toggleTask(options: ToggleTaskOptions): { ok: boolean; task?: Task } {
