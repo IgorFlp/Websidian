@@ -31,6 +31,7 @@ export interface Config {
   publicDir: string;
   presetsFile: string;
   port: number;
+  mcpApiKey: string;
 }
 
 function getEnv(key: string, defaultValue?: string): string {
@@ -87,6 +88,7 @@ export const config: Config = {
   publicDir: getEnv("PUBLIC_DIR", "/public"),
   presetsFile: getEnv("PRESETS_FILE", "/data/presets.json"),
   port: getEnvInt("PORT", 9091),
+  mcpApiKey: getEnv("MCP_API_KEY", ""),
 };
 
 export type { Config as ConfigType };

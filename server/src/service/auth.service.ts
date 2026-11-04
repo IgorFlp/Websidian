@@ -18,6 +18,12 @@ export class AuthService {
     return username === this.appUser && password === this.appPassword;
   }
 
+  validateApiKey(key: string): boolean {
+    const mcpApiKey = config.mcpApiKey;
+    if (!mcpApiKey) return false;
+    return key === mcpApiKey;
+  }
+
   createSession(session: SessionData): void {
     session.auth = true;
   }

@@ -1,6 +1,7 @@
 import { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
 import { PresetsService } from "../service/presets.service.js";
+import { config } from "../config/index.js";
 
 const presetsService = new PresetsService();
 
@@ -47,14 +48,41 @@ const presetParamsSchema = z.object({
   id: z.string().describe("Preset ID (e.g., preset-123)"),
 });
 
+function requireApiKeyOrSession(request: any, reply: any, done: () => void) {
+  const authHeader = request.headers.authorization;
+  const apiKey = config.mcpApiKey;
+
+  if (!apiKey) {
+    return reply.status(503).send({ error: "MCP not configured" });
+  }
+
+  if (authHeader?.startsWith("Bearer ")) {
+    const providedKey = authHeader.slice(7);
+    if (providedKey === apiKey) {
+      return done();
+    }
+    return reply.status(401).send({ error: "Invalid API key" });
+  }
+
+  const session = request.session as any;
+  if (session?.auth === true) {
+    return done();
+  }
+
+  return reply.status(401).send({ error: "API key required" });
+}
+
 export const presetsRoutes: FastifyPluginAsyncZod = async (fastify) => {
   fastify.get("/api/presets", {
     schema: {
       response: {
         200: presetsResponseSchema,
+        401: z.object({ error: z.string() }),
         500: z.object({ error: z.string() }),
+        503: z.object({ error: z.string() }),
       },
     },
+    preHandler: requireApiKeyOrSession,
   }, async (_request, reply) => {
     const presets = presetsService.getAll();
     return { presets };
@@ -66,9 +94,12 @@ export const presetsRoutes: FastifyPluginAsyncZod = async (fastify) => {
       response: {
         201: z.object({ preset: presetSchema }),
         400: z.object({ error: z.string() }),
+        401: z.object({ error: z.string() }),
         500: z.object({ error: z.string() }),
+        503: z.object({ error: z.string() }),
       },
     },
+    preHandler: requireApiKeyOrSession,
   }, async (request, reply) => {
     const { name, files, vaultIndex, order } = request.body as { name: string; files?: string[]; vaultIndex?: number; order?: number };
     try {
@@ -84,10 +115,13 @@ export const presetsRoutes: FastifyPluginAsyncZod = async (fastify) => {
       params: z.object({ id: z.string() }),
       response: {
         200: z.object({ ok: z.boolean() }),
+        401: z.object({ error: z.string() }),
         404: z.object({ error: z.string() }),
         500: z.object({ error: z.string() }),
+        503: z.object({ error: z.string() }),
       },
     },
+    preHandler: requireApiKeyOrSession,
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const deleted = presetsService.delete(id);
@@ -107,10 +141,13 @@ export const presetsRoutes: FastifyPluginAsyncZod = async (fastify) => {
       }),
       response: {
         200: z.object({ preset: presetSchema }),
+        401: z.object({ error: z.string() }),
         404: z.object({ error: z.string() }),
         500: z.object({ error: z.string() }),
+        503: z.object({ error: z.string() }),
       },
     },
+    preHandler: requireApiKeyOrSession,
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const { name, vaultIndex, order } = request.body as { name?: string; vaultIndex?: number; order?: number };
@@ -127,9 +164,12 @@ export const presetsRoutes: FastifyPluginAsyncZod = async (fastify) => {
       response: {
         200: z.object({ ok: z.boolean() }),
         400: z.object({ error: z.string() }),
+        401: z.object({ error: z.string() }),
         500: z.object({ error: z.string() }),
+        503: z.object({ error: z.string() }),
       },
     },
+    preHandler: requireApiKeyOrSession,
   }, async (request, reply) => {
     const { presetIds } = request.body as { presetIds: string[] };
     try {
@@ -147,10 +187,13 @@ export const presetsRoutes: FastifyPluginAsyncZod = async (fastify) => {
       response: {
         200: z.object({ preset: presetSchema }),
         400: z.object({ error: z.string() }),
+        401: z.object({ error: z.string() }),
         404: z.object({ error: z.string() }),
         500: z.object({ error: z.string() }),
+        503: z.object({ error: z.string() }),
       },
     },
+    preHandler: requireApiKeyOrSession,
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const { files } = request.body as { files: { path: string; order?: number }[] };
