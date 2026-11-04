@@ -48,7 +48,7 @@ async function buildApp(): Promise<FastifyInstance> {
 async function start(): Promise<void> {
   try {
     const app = await buildApp();
-    const address = await app.listen({ port: config.port, host: "127.0.0.1" });
+    const address = await app.listen({ port: config.port, host: "0.0.0.0" });
     console.log(`Server running on ${address}`);
     
     // Keep process alive

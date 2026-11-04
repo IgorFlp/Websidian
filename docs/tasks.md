@@ -87,9 +87,89 @@
     - [ ] US04-T04 - Implementar seleção de provider/model no front e backend
 
 - [ ] US05 - Websidian MCP
-    - [ ] US05-T01 - Descrever endpoints (action based) com base na API
-    - [ ] US05-T02 - Criar rascunho do planejamento em reunião com a IA
+    - [x] US05-T01 - Descrever endpoints (action based) com base na API
+        Precisamos criar um MCP para utilizar as funcionalidades presentes na API do websidian no nosso Hermes ou qualquer outro harness de IA, principalmente para gestão de contexto e evitar a necessidade de execução de codigo para buscas de tasks.
+
+        **Lista Consolidada de Tools MCP (aprovada):**
+
+        **Tasks (existentes/planejadas):**
+        - `tasks_list` — POST `/api/tasks/list` com `TaskFilter` { startDate?, finishDate?, Done?:boolean=true, Scheduled?:boolean=true, Due?:boolean=true }
+        - `task_toggle` — POST `/api/tasks/toggle` { file, line, vault? } — marcar/desmarcar task como done
+
+        **Notes:**
+        - `note_create` — POST `/api/newNote` { noteName, timestamp, text, vault? } — criar nova nota
+
+        **Presets (gestão de contexto/packs de arquivos):**
+        - `presets_list` — GET `/api/presets` — listar todos presets
+        - `preset_create` — POST `/api/presets` { name, files:string[], vaultIndex?, order? }
+        - `preset_update` — PUT `/api/presets/{id}` { name?, vaultIndex?, order? }
+        - `preset_delete` — DELETE `/api/presets/{id}`
+        - `preset_reorder` — PUT `/api/presets/reorder` { presetIds:string[] }
+        - `preset_files_update` — PUT `/api/presets/{id}/files` { files:{path,order}[] }
+
+        **Vaults:**
+        - `vaults_list` — GET `/vaults` — listar vaults disponíveis (id, name, fullPath)
+
+        **Auth:** Será via API_KEY customizado (não usa endpoints /login, /logout)
+
+        **Excluídos intencionalmente:**
+        - File ops (list, read, download) — Hermes usa filesystem diretamente
+        - Chat/Session endpoints — causariam loop (a API já conversa com Hermes Gateway)
+        - Voice/Audio (TTS, STT, upload) — API do usuário gerencia, não o Hermes
+        - Terminal polling — será removido em breve
+
+    - [x] US05-T02 - Criar rascunho do planejamento em reunião com a IA
     - [ ] US05-T03 - Criar a spec completa da alteração
+    /opsx:propose Websidian MCP
+    Precisamos criar um MCP para que o Hermes acesse as funcionalidades do Websidian e gaste menos contexto com Regex.
+
+    Antes de criar o MCP vamos fazer uma alteração no endpoint GET api/tasks.
+        - Altere ela para um POST que recebe um body TaskFilter
+        - Adicione nele um filtro de tasks, crie o seguinte objeto para o filtro de tasks
+        TaskFilter {
+            startDate? :date
+            finishDate? : date
+            Done : boolean default true
+            Scheduled : boolean default true
+            Due: boolean  default true
+        }
+        - Caso o usuario envie data de inicio e fim devem ser retornadas apenas tasks que estão com scheduled, due, done nas datas ENTRE inicio e fim.
+        - Caso o usuario envie algum boolean (done,scheduled,due) como false, as tasks com essas tags NÃO DEVEM entrar na resposta.
+        IMPORTANTE: Este endpoint ja é utilizado pelo frontend, analise os danos e faça um plano de migração com as correções de frontend tambem (lembrando sempre da compatibilidade de navegador Android 4)
+
+
+        Agora para o MCP:
+        - Crie um sistema de AUTH comm API_KEY definida no ENV da API para que o MCP consiga chama-la sem necessidade de login
+
+        - Crie as seguintes ações para o MCP:
+        **Lista Consolidada de Tools MCP (aprovada):**
+
+        **Tasks (existentes/planejadas):**
+        - `tasks_list` — POST `/api/tasks/list` com `TaskFilter` { startDate?, finishDate?, Done?:boolean=true, Scheduled?:boolean=true, Due?:boolean=true }
+        - `task_toggle` — POST `/api/tasks/toggle` { file, line, vault? } — marcar/desmarcar task como done
+
+        **Notes:**
+        - `note_create` — POST `/api/newNote` { noteName, timestamp, text, vault? } — criar nova nota
+
+        **Presets (gestão de contexto/packs de arquivos):**
+        - `presets_list` — GET `/api/presets` — listar todos presets
+        - `preset_create` — POST `/api/presets` { name, files:string[], vaultIndex?, order? }
+        - `preset_update` — PUT `/api/presets/{id}` { name?, vaultIndex?, order? }
+        - `preset_delete` — DELETE `/api/presets/{id}`
+        - `preset_reorder` — PUT `/api/presets/reorder` { presetIds:string[] }
+        - `preset_files_update` — PUT `/api/presets/{id}/files` { files:{path,order}[] }
+
+        **Vaults:**
+        - `vaults_list` — GET `/vaults` — listar vaults disponíveis (id, name, fullPath)
+
+        **Auth:** Será via API_KEY customizado (não usa endpoints /login, /logout)
+
+        **Excluídos intencionalmente:**
+        - File ops (list, read, download) — Hermes usa filesystem diretamente
+        - Chat/Session endpoints — causariam loop (a API já conversa com Hermes Gateway)
+        - Voice/Audio (TTS, STT, upload) — API do usuário gerencia, não o Hermes
+        - Terminal polling — será removido em breve
+
     - [ ] US05-T04 - Aplicar a spec da alteração
 
 - [ ] US06 - Hermes button na page schedule
