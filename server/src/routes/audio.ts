@@ -8,38 +8,38 @@ import path from "path";
 const audioFileManager = new AudioFileManager();
 
 const ttsRequestSchema = z.object({
-  text: z.string().min(1),
-  voice: z.string().optional(),
-  speed: z.number().optional().default(1),
-  messageId: z.string().optional(),
+  text: z.string().min(1).describe("Text to synthesize (e.g., Hello, world!)"),
+  voice: z.string().optional().describe("Voice name (e.g., pm_alex)"),
+  speed: z.number().optional().default(1).describe("Speech speed (e.g., 1.0)"),
+  messageId: z.string().optional().describe("Message ID (e.g., msg-123)"),
 });
 
 const ttsResponseSchema = z.object({
-  url: z.string(),
-  text: z.string(),
-  messageId: z.string().optional(),
+  url: z.string().describe("Audio URL (e.g., /audio/tts-msg-123.mp3)"),
+  text: z.string().describe("Original text (e.g., Hello, world!)"),
+  messageId: z.string().optional().describe("Message ID (e.g., msg-123)"),
 });
 
 const ttsCheckParamsSchema = z.object({
-  messageId: z.string().min(1),
+  messageId: z.string().min(1).describe("Message ID (e.g., msg-123)"),
 });
 
 const sttResponseSchema = z.object({
-  text: z.string(),
+  text: z.string().describe("Transcribed text (e.g., This is the transcribed text)"),
   segments: z.array(z.unknown()).optional(),
 });
 
 const uploadAudioResponseSchema = z.object({
-  audioPath: z.string(),
-  fileName: z.string(),
-  size: z.number(),
-  mimetype: z.string(),
-  transcript: z.string(),
+  audioPath: z.string().describe("Audio path (e.g., /audio/uploads/recording.webm)"),
+  fileName: z.string().describe("File name (e.g., recording.webm)"),
+  size: z.number().describe("File size in bytes (e.g., 102400)"),
+  mimetype: z.string().describe("MIME type (e.g., audio/webm)"),
+  transcript: z.string().describe("Transcribed text (e.g., This is the transcribed text)"),
   segments: z.array(z.unknown()).optional(),
 });
 
 const audioParamsSchema = z.object({
-  id: z.string().min(1),
+  id: z.string().min(1).describe("Audio ID (e.g., audio-123)"),
 });
 
 export const audioRoutes: FastifyPluginAsyncZod = async (fastify) => {

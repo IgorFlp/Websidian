@@ -51,13 +51,19 @@
 - [ ] US02 - Melhoria de robustes
     - [x] US02-T01 - Criar especificação do refactor 📅 2026-10-14 ✅ 2026-10-16
     - [x] US02-T02 - Aplicar especificação do refactor (critérios de aceite) 📅 2026-10-14 ✅ 2026-10-16
-    - [ ] US02-T03 - Criar especificação de melhoria com ID e estrutura de dados 📅 2026-10-15
-    - [ ] US02-T04 - Aplicação da especificação de melhoria 📅 2026-10-15
-- [ ] US03 - Melhoria de UX
-    - [ ] US03-T01 - Criar retorno incremental para front (stt,texto,tts) 📅 2026-10-19
-    - [x] US03-T02 - Testar modelo de STT maior ou sem limpeza de pausas no áudio 📅 2026-10-19
-    - [ ] US03-T03 - Vincular o play ao áudio do cache 📅 2026-10-19
+    - [x] US02-T03 - Criar especificação de melhoria com ID e estrutura de dados 📅 2026-10-15 ✅ 2026-10-16
+    - [x] US02-T04 - Aplicação da especificação de melhoria 📅 2026-10-15 ✅ 2026-10-16
+- [ ] US03 - Melhoria de Ux
+    - [ ] US03-T01 - Refatorar Chat de polling -> Event based rendering 📅 2026-10-19
+    - [ ] US03-T02 - Melhorias de estilo 📅 2026-10-19
+        - [ ] Animação para Audio sendo gerado após play
+        - [ ] Animação para Resposta sendo gerada após send
+        - [ ] Centralização e correção de icons
+        - [ ] Troca de icons com base no estado do botão (play - gerando - pause)
+    - [ ] US03-T03 - Adicionar player de recording na mensagem do usuário abaixo do texto 📅 2026-10-19
     - [ ] US03-T04 - Adicionar texto selecionável 📅 2026-10-19
+    - [ ] US03-T05 - Fixar Debugger no topo direito do chat container e mudar o icone 📅 2026-10-19
+    - [ ] US03-T06 - Implementar seletor de sessions para exclusão 📅 2026-10-19
     - [ ] Criar página HTML mínima com:
         <div id=\"terminal\" style=\"white-space:pre-wrap; font-family:monospace;\"></div>
         <input id=\"cmd\" type=\"text\" placeholder=\"Digite o comando…\"> + botão Enviar (ou captura de Enter)
@@ -68,8 +74,102 @@
         Insere resp.html no <div id=\"terminal\"> via insertAdjacentHTML('beforeend', resp.html)
         Rolagem automática para o bottom (terminal.scrollTop = terminal.scrollHeight)
         Para cada objeto em resp.audio, cria elemento <audio src=\"url\" controls autoplay> e o anexa após o último caractere inserido (ou adiciona a uma fila de reprodução)
-    - [ ] Implementar envio de comando: ao clicar em Enviar ou pressionar Enter, fazer POST a /terminal/input com {data: texto + \"\\n\"}
+    - [ ] Implementar envio de comando: ao clicar em Enviar ou pressionar Enter, fazer POST a /terminal/input com {data: texto + \"\\\\n\"}
     - [ ] Adicionar tratamento de erros de rede (tentar novamente após 2s, exibir mensagem de aviso)
     - [ ] Testar a página em um emulador ou dispositivo Android 4 (ou navegador que simule aquele nível de suporte)
     - [ ] Verificar que o texto aparece com as mesmas cores/estilos do Hermes CLI e que o áudio é reproduzido automaticamente
     - [ ] Verificar que não há vazamento de memória (limpar elementos de áudio muito antigos se necessario)
+
+- [ ] US04 - Integração de profiles e providers
+    - [ ] US04-T01 - Integrar profile alfred com hermes dockerizado
+    - [ ] US04-T02 - Permitir alteração nos arquivos do profile de forma dinamica e versionada
+    - [ ] US04-T03 - Implementar seleção de profile no front
+    - [ ] US04-T04 - Implementar seleção de provider/model no front e backend
+
+- [ ] US05 - Websidian MCP
+    - [x] US05-T01 - Descrever endpoints (action based) com base na API
+        Precisamos criar um MCP para utilizar as funcionalidades presentes na API do websidian no nosso Hermes ou qualquer outro harness de IA, principalmente para gestão de contexto e evitar a necessidade de execução de codigo para buscas de tasks.
+
+        **Lista Consolidada de Tools MCP (aprovada):**
+
+        **Tasks (existentes/planejadas):**
+        - `tasks_list` — POST `/api/tasks/list` com `TaskFilter` { startDate?, finishDate?, Done?:boolean=true, Scheduled?:boolean=true, Due?:boolean=true }
+        - `task_toggle` — POST `/api/tasks/toggle` { file, line, vault? } — marcar/desmarcar task como done
+
+        **Notes:**
+        - `note_create` — POST `/api/newNote` { noteName, timestamp, text, vault? } — criar nova nota
+
+        **Presets (gestão de contexto/packs de arquivos):**
+        - `presets_list` — GET `/api/presets` — listar todos presets
+        - `preset_create` — POST `/api/presets` { name, files:string[], vaultIndex?, order? }
+        - `preset_update` — PUT `/api/presets/{id}` { name?, vaultIndex?, order? }
+        - `preset_delete` — DELETE `/api/presets/{id}`
+        - `preset_reorder` — PUT `/api/presets/reorder` { presetIds:string[] }
+        - `preset_files_update` — PUT `/api/presets/{id}/files` { files:{path,order}[] }
+
+        **Vaults:**
+        - `vaults_list` — GET `/vaults` — listar vaults disponíveis (id, name, fullPath)
+
+        **Auth:** Será via API_KEY customizado (não usa endpoints /login, /logout)
+
+        **Excluídos intencionalmente:**
+        - File ops (list, read, download) — Hermes usa filesystem diretamente
+        - Chat/Session endpoints — causariam loop (a API já conversa com Hermes Gateway)
+        - Voice/Audio (TTS, STT, upload) — API do usuário gerencia, não o Hermes
+        - Terminal polling — será removido em breve
+
+    - [x] US05-T02 - Criar rascunho do planejamento em reunião com a IA
+    - [ ] US05-T03 - Criar a spec completa da alteração
+    /opsx:propose Websidian MCP
+    Precisamos criar um MCP para que o Hermes acesse as funcionalidades do Websidian e gaste menos contexto com Regex.
+
+    Antes de criar o MCP vamos fazer uma alteração no endpoint GET api/tasks.
+        - Altere ela para um POST que recebe um body TaskFilter
+        - Adicione nele um filtro de tasks, crie o seguinte objeto para o filtro de tasks
+        TaskFilter {
+            startDate? :date
+            finishDate? : date
+            Done : boolean default true
+            Scheduled : boolean default true
+            Due: boolean  default true
+        }
+        - Caso o usuario envie data de inicio e fim devem ser retornadas apenas tasks que estão com scheduled, due, done nas datas ENTRE inicio e fim.
+        - Caso o usuario envie algum boolean (done,scheduled,due) como false, as tasks com essas tags NÃO DEVEM entrar na resposta.
+        IMPORTANTE: Este endpoint ja é utilizado pelo frontend, analise os danos e faça um plano de migração com as correções de frontend tambem (lembrando sempre da compatibilidade de navegador Android 4)
+
+
+        Agora para o MCP:
+        - Crie um sistema de AUTH comm API_KEY definida no ENV da API para que o MCP consiga chama-la sem necessidade de login
+
+        - Crie as seguintes ações para o MCP:
+        **Lista Consolidada de Tools MCP (aprovada):**
+
+        **Tasks (existentes/planejadas):**
+        - `tasks_list` — POST `/api/tasks/list` com `TaskFilter` { startDate?, finishDate?, Done?:boolean=true, Scheduled?:boolean=true, Due?:boolean=true }
+        - `task_toggle` — POST `/api/tasks/toggle` { file, line, vault? } — marcar/desmarcar task como done
+
+        **Notes:**
+        - `note_create` — POST `/api/newNote` { noteName, timestamp, text, vault? } — criar nova nota
+
+        **Presets (gestão de contexto/packs de arquivos):**
+        - `presets_list` — GET `/api/presets` — listar todos presets
+        - `preset_create` — POST `/api/presets` { name, files:string[], vaultIndex?, order? }
+        - `preset_update` — PUT `/api/presets/{id}` { name?, vaultIndex?, order? }
+        - `preset_delete` — DELETE `/api/presets/{id}`
+        - `preset_reorder` — PUT `/api/presets/reorder` { presetIds:string[] }
+        - `preset_files_update` — PUT `/api/presets/{id}/files` { files:{path,order}[] }
+
+        **Vaults:**
+        - `vaults_list` — GET `/vaults` — listar vaults disponíveis (id, name, fullPath)
+
+        **Auth:** Será via API_KEY customizado (não usa endpoints /login, /logout)
+
+        **Excluídos intencionalmente:**
+        - File ops (list, read, download) — Hermes usa filesystem diretamente
+        - Chat/Session endpoints — causariam loop (a API já conversa com Hermes Gateway)
+        - Voice/Audio (TTS, STT, upload) — API do usuário gerencia, não o Hermes
+        - Terminal polling — será removido em breve
+
+    - [ ] US05-T04 - Aplicar a spec da alteração
+
+- [ ] US06 - Hermes button na page schedule

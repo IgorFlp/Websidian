@@ -15,7 +15,19 @@
  * @property {string} recurringRule - if recurring, rule
  * @property {string} file - file name
  * @property {number} index- index 
-*/
+ */
+
+/**
+ * @typedef {Object} TaskFilter
+ * @property {number} [vault=0] - Vault index
+ * @property {string} [path=""] - Path prefix to filter tasks
+ * @property {string[]} [files] - Specific files to include
+ * @property {string} [startDate] - Start date for range filter (YYYY-MM-DD)
+ * @property {string} [finishDate] - End date for range filter (YYYY-MM-DD)
+ * @property {boolean} [Done=true] - Include completed tasks (default true)
+ * @property {boolean} [Scheduled=true] - Include scheduled tasks (default true)
+ * @property {boolean} [Due=true] - Include tasks with due date (default true)
+ */
 
 /**
  * @typedef {FileNode[]} FileTree

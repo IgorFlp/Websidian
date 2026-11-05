@@ -438,12 +438,26 @@ function loadTasks() {
     presetData.files.forEach(function(f, i) { fileOrder[f.path] = f.order !== undefined ? f.order : i; });
   }
 
-  httpGet("/api/tasks?vault=" + getActiveVaultIndex(), function(tasks) {
+  var vaultIndex = getActiveVaultIndex();
+  
+  // Build TaskFilter for new POST endpoint
+  var taskFilter = {
+    vault: parseInt(vaultIndex, 10),
+    files: filterFiles
+  };
+
+  httpPost("/api/tasks/list", taskFilter, function(err, tasks) {
+    if (err) {
+      alert("Erro ao carregar tarefas: " + err.message);
+      return;
+    }
+
     if (!Array.isArray(tasks)) {
       alert("Resposta inválida do servidor: " + JSON.stringify(tasks));
       return;
     }
 
+    // Server-side filtering by files is not implemented yet, so filter client-side for now
     var filtered = tasks.filter(function(task) {
       return filterFiles.indexOf(task.file) !== -1;
     });

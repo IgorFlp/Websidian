@@ -6,27 +6,27 @@ import path from "path";
 const filesService = new FilesService();
 
 const getFilesQuerySchema = z.object({
-  flat: z.coerce.boolean().optional().default(false),
-  vault: z.coerce.number().int().nonnegative().optional().default(0),
+  flat: z.coerce.boolean().optional().default(false).describe("Flat list (e.g., false)"),
+  vault: z.coerce.number().int().nonnegative().optional().default(0).describe("Vault index (e.g., 0)"),
 });
 
 const fileContentQuerySchema = z.object({
-  path: z.string().min(1),
-  vault: z.coerce.number().int().nonnegative().optional().default(0),
+  path: z.string().min(1).describe("File path (e.g., notes/example.md)"),
+  vault: z.coerce.number().int().nonnegative().optional().default(0).describe("Vault index (e.g., 0)"),
 });
 
 const downloadQuerySchema = z.object({
-  path: z.string().min(1),
-  vault: z.coerce.number().int().nonnegative().optional().default(0),
+  path: z.string().min(1).describe("File path (e.g., notes/example.md)"),
+  vault: z.coerce.number().int().nonnegative().optional().default(0).describe("Vault index (e.g., 0)"),
 });
 
 const fileNodeSchema: z.ZodType<any> = z.object({
-  type: z.enum(["folder", "file"]),
-  name: z.string(),
-  path: z.string(),
+  type: z.enum(["folder", "file"]).describe("Node type (e.g., file)"),
+  name: z.string().describe("Node name (e.g., example.md)"),
+  path: z.string().describe("Full path (e.g., notes/example.md)"),
   children: z.array(z.unknown()).optional(),
-  size: z.number().optional(),
-  modified: z.number().optional(),
+  size: z.number().optional().describe("File size in bytes (e.g., 1024)"),
+  modified: z.number().optional().describe("Modification timestamp (e.g., 1705315200000)"),
 });
 
 const apiFilesResponseSchema = z.object({
@@ -34,8 +34,8 @@ const apiFilesResponseSchema = z.object({
 });
 
 const fileContentResponseSchema = z.object({
-  content: z.string(),
-  path: z.string(),
+  content: z.string().describe("File content (e.g., # Example Note\n\nContent here...)"),
+  path: z.string().describe("File path (e.g., notes/example.md)"),
 });
 
 export const filesRoutes: FastifyPluginAsyncZod = async (fastify) => {

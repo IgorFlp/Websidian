@@ -19,27 +19,27 @@ Every decision on this project is based on the limitations of Android 4, from st
 - Markdown editor (Future)
 - Custom sessions on task view (Future)
 
-## Archtecure Sugestions
+## Architecture Suggestions
 
 ### Localhost
 
 If all you need is a task portrait in your home desk you simply:
--Clone the repository on the PC where the vault is.
--Create a .env based on .env-example.
--Run node server/api.js.
--Access your web view with localhost:3000 OR PC-IP:3000 on other devices.
+- Clone the repository on the PC where the vault is.
+- Create a .env based on .env.example.
+- Run node server/api.js.
+- Access your web view with localhost:3000 OR PC-IP:3000 on other devices.
 
 ### Private server (AWS, Azure, Oracle...)
 
-If you are like me and need your vault on every single device on the go, this is the archtecture i recommend.
+If you are like me and need your vault on every single device on the go, this is the architecture i recommend.
 
 Task Portrait <- Websidian - Server - Syncthing -> Devices (Phone, PC, Laptop)
 
-Basicaly you need a **copy of your vault** on your server and **Syncthing** installed on the server and in **every device** that you run obsidian.
+Basically you need a **copy of your vault** on your server and **Syncthing** installed on the server and in **every device** that you run obsidian.
 
-Syncthing is responsable for updating the vault on every device connected as you edit in one.
+Syncthing is responsible for updating the vault on every device connected as you edit in one.
 
-I strongly sugest you also backup your vault in a cloud or other private server (Having Google drive or OneDrive tracking your PC vault might be enough)
+I strongly suggest you also backup your vault in a cloud or other private server (Having Google drive or OneDrive tracking your PC vault might be enough)
 
 Then just install Websidian on your server (Via git clone, Docker or Portainer) and access on your limited device that can't run obsidian or syncthing.
 
@@ -64,3 +64,40 @@ docker compose up -d
 4. Deploy Stack
 
 ⚠️ `docker-compose.portainer.yml` is only an example file.
+
+## 🤖 MCP Server
+
+Websidian includes a Model Context Protocol (MCP) server that exposes structured tools for tasks, notes, presets, and vaults. This allows AI assistants like Hermes to interact with Websidian programmatically.
+
+### Configuration
+
+1. Set `MCP_API_KEY` in your `.env` file (generate a secure random string):
+   ```
+   MCP_API_KEY=your-secure-random-key-here
+   ```
+
+2. Start the MCP server:
+   ```bash
+   cd server
+   npm run mcp:start
+   ```
+
+### Available MCP Tools
+
+- **Tasks**: `tasks_list` (with filtering), `task_toggle`
+- **Notes**: `note_create`
+- **Presets**: `presets_list`, `preset_create`, `preset_update`, `preset_delete`, `preset_reorder`, `preset_files_update`
+- **Vaults**: `vaults_list`
+
+### Authentication
+
+MCP tools authenticate via the `Authorization: Bearer <MCP_API_KEY>` header. The same endpoints also support session-based authentication for web frontend compatibility.
+
+### Task Filtering
+
+The `tasks_list` tool supports advanced filtering:
+- Date range: `startDate` and `finishDate` (both required, format: YYYY-MM-DD)
+- Boolean flags: `Done`, `Scheduled`, `Due` (default: true, set to false to exclude)
+- Vault selection: `vault` (default: 0)
+- Path prefix: `path`
+- Specific files: `files` array

@@ -29,6 +29,8 @@ async function buildApp(): Promise<FastifyInstance> {
   await registerPlugins(app);
   await registerRoutes(app);
 
+  app.get("/swagger.json", async () => app.swagger());
+
   // Register static plugin after routes to avoid intercepting /login and other routes
   await app.register(fastifyStatic, {
     root: path.join(process.cwd(), "..", "public"),
@@ -44,14 +46,10 @@ async function buildApp(): Promise<FastifyInstance> {
 }
 
 async function start(): Promise<void> {
-  console.log("start() called");
   try {
-    console.log("Building app...");
     const app = await buildApp();
-    console.log("App built, starting server...");
     const address = await app.listen({ port: config.port, host: "0.0.0.0" });
     console.log(`Server running on ${address}`);
-    console.log("Server is listening, keeping process alive...");
     
     // Keep process alive
     await new Promise(() => {});
@@ -63,21 +61,11 @@ async function start(): Promise<void> {
 
 import { fileURLToPath } from "url";
 
-console.log("Module loaded, checking import.meta.url...");
-console.log("import.meta.url:", import.meta.url);
-console.log("process.argv[1]:", process.argv[1]);
-
 const scriptPath = fileURLToPath(import.meta.url);
 const entryPath = process.argv[1];
 
-console.log("scriptPath:", scriptPath);
-console.log("entryPath:", entryPath);
-
 if (scriptPath === entryPath) {
-  console.log("Running start()...");
   await start();
-} else {
-  console.log("Not main module, not calling start()");
 }
 
 export { buildApp, start };

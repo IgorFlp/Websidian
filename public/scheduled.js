@@ -51,6 +51,41 @@ function httpGet(url, callback) {
   xhr.send();
 }
 
+function httpPost(url, data, callback) {
+  var xhr = new XMLHttpRequest();
+  xhr.open("POST", url, true);
+  xhr.setRequestHeader("Content-Type", "application/json");
+
+  xhr.onreadystatechange = function () {
+    if (xhr.readyState !== 4) return;
+
+    if (xhr.status === 401) {
+      window.location.href = "/login";
+      return;
+    }
+
+    if (xhr.status === 200 || xhr.status === 201) {
+      try {
+        var response = JSON.parse(xhr.responseText);
+        callback(null, response);
+      } catch (e) {
+        safeLog("Error: " + e);
+        callback(e);
+      }
+    } else {
+      safeLog("HTTP Error: " + xhr.status + " for " + url);
+      callback(new Error("Erro: " + xhr.status));
+    }
+  };
+
+  xhr.onerror = function() {
+    safeLog("Network error for " + url);
+    callback(new Error("Erro de conexão"));
+  };
+
+  xhr.send(JSON.stringify(data));
+}
+
 function toDate(date) {
   if (!date) return null;
   return parseISO(date);
@@ -223,7 +258,15 @@ function loadTasks() {
     var allTasksByVault = {};
 
     vaults.forEach(function(vault) {
-      httpGet("/api/tasks?vault=" + vault.id, function(tasks) {
+      var taskFilter = {
+        vault: vault.id
+      };
+
+      httpPost("/api/tasks/list", taskFilter, function(err, tasks) {
+        if (err) {
+          safeLog("Erro ao carregar tarefas do vault " + vault.id + ": " + err.message);
+          tasks = [];
+        }
         if (!Array.isArray(tasks)) {
           safeLog("Resposta inválida do servidor para vault " + vault.id + ": " + JSON.stringify(tasks));
           tasks = [];

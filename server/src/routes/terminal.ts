@@ -7,24 +7,24 @@ const terminalService = new TerminalService();
 const htmlRenderer = new HTMLRenderer();
 
 const terminalInputRequestSchema = z.object({
-  input: z.string(),
-  sessionId: z.string().optional(),
+  input: z.string().describe("Terminal input (e.g., ls -la\\n)"),
+  sessionId: z.string().optional().describe("Session ID (e.g., term-123)"),
 });
 
 const terminalInputResponseSchema = z.object({
-  accepted: z.boolean(),
-  sessionId: z.string().optional(),
+  accepted: z.boolean().describe("Accepted flag (e.g., true)"),
+  sessionId: z.string().optional().describe("Session ID (e.g., term-123)"),
 });
 
 const terminalPollQuerySchema = z.object({
-  sessionId: z.string().min(1),
-  since: z.coerce.number().int().nonnegative().optional().default(0),
+  sessionId: z.string().min(1).describe("Session ID (e.g., term-123)"),
+  since: z.coerce.number().int().nonnegative().optional().default(0).describe("Since timestamp (e.g., 0)"),
 });
 
 const terminalPollResponseSchema = z.object({
-  since: z.number(),
-  html: z.string(),
-  audio: z.array(z.unknown()),
+  since: z.number().describe("Since timestamp (e.g., 1705315200000)"),
+  html: z.string().describe("Terminal HTML output (e.g., <div class='output'>$ ls -la\\noutput here...</div>)"),
+  audio: z.array(z.unknown()).describe("Audio data (e.g., [])"),
 });
 
 export const terminalRoutes: FastifyPluginAsyncZod = async (fastify) => {

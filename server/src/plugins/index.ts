@@ -1,12 +1,11 @@
-import { FastifyInstance } from "fastify";
+import { FastifyInstance, FastifySchema } from "fastify";
 import fastifyCookie from "@fastify/cookie";
 import fastifySession from "@fastify/session";
 import fastifyFormbody from "@fastify/formbody";
 import fastifyMultipart from "@fastify/multipart";
 import fastifySwagger from "@fastify/swagger";
 import fastifySwaggerUi from "@fastify/swagger-ui";
-import { serializerCompiler, validatorCompiler } from "fastify-type-provider-zod";
-import path from "path";
+import { serializerCompiler, validatorCompiler, jsonSchemaTransform } from "fastify-type-provider-zod";
 
 export async function registerPlugins(app: FastifyInstance): Promise<void> {
   app.setValidatorCompiler(validatorCompiler);
@@ -31,6 +30,7 @@ export async function registerPlugins(app: FastifyInstance): Promise<void> {
     },
   });
 
+  // @ts-ignore
   await app.register(fastifySwagger, {
     openapi: {
       info: {
@@ -39,7 +39,18 @@ export async function registerPlugins(app: FastifyInstance): Promise<void> {
         version: "1.0.0",
       },
       servers: [{ url: "http://localhost:9091" }],
+      components: {
+        securitySchemes: {
+          sessionAuth: {
+            type: "apiKey",
+            in: "cookie",
+            name: "connect.sid",
+          },
+        },
+      },
     },
+    // @ts-ignore
+    transform: jsonSchemaTransform,
   });
 
   await app.register(fastifySwaggerUi, {

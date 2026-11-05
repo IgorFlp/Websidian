@@ -7,11 +7,14 @@ const RETRY_DELAY_MS = 1000;
 export class HermesClient {
   private baseUrl: string;
   private apiKey: string;
+  private model: string;
   private initialized = false;
+  private lockedSessions = new Set<string>();
 
   constructor(cfg: typeof config = config) {
     this.baseUrl = (cfg.hermesApiUrl || "http://localhost:8642").replace(/\/$/, "");
     this.apiKey = cfg.hermesApiKey || "";
+    this.model = cfg.hermesModel || "hermes-agent";
   }
 
   async initialize(): Promise<void> {
@@ -122,8 +125,22 @@ export class HermesClient {
     return this.post("/api/sessions", { title }) as Promise<{ sessionId: string }>;
   }
 
+  async ensureSessionModel(sessionId: string): Promise<void> {
+    if (this.lockedSessions.has(sessionId)) return;
+    try {
+      await this.post(`/api/sessions/${sessionId}/model`, { model: this.model });
+      this.lockedSessions.add(sessionId);
+    } catch (err) {
+      console.warn(
+        `[HERMES] Failed to set session model for ${sessionId}:`,
+        err instanceof Error ? err.message : err
+      );
+    }
+  }
+
   async chat(sessionId: string, input: string, systemPrompt: string | null = null): Promise<unknown> {
-    const body: Record<string, unknown> = { input };
+    await this.ensureSessionModel(sessionId);
+    const body: Record<string, unknown> = { input, model: this.model };
     if (systemPrompt) body["system"] = systemPrompt;
     return this.post(`/api/sessions/${sessionId}/chat`, body);
   }
@@ -134,7 +151,8 @@ export class HermesClient {
     systemPrompt: string | null = null,
     onChunk: (chunk: unknown) => void
   ): Promise<void> {
-    const body: Record<string, unknown> = { input, stream: true };
+    await this.ensureSessionModel(sessionId);
+    const body: Record<string, unknown> = { input, stream: true, model: this.model };
     if (systemPrompt) body["system"] = systemPrompt;
 
     const url = `${this.baseUrl}/api/sessions/${sessionId}/chat`;

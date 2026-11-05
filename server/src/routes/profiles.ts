@@ -5,10 +5,10 @@ import { ProfilesService } from "../service/profiles.service.js";
 const profilesService = new ProfilesService();
 
 const profileSchema = z.object({
-  name: z.string(),
-  modelName: z.string(),
-  endpoint: z.string(),
-  isDefault: z.boolean(),
+  name: z.string().describe("Profile name (e.g., Default Profile)"),
+  modelName: z.string().describe("Model name (e.g., hermes-agent)"),
+  endpoint: z.string().describe("Endpoint URL (e.g., http://localhost:8642)"),
+  isDefault: z.boolean().describe("Default profile flag (e.g., true)"),
 });
 
 export const profilesRoutes: FastifyPluginAsyncZod = async (fastify) => {

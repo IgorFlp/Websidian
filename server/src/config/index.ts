@@ -15,6 +15,7 @@ export interface Config {
   appPassword: string;
   hermesApiUrl: string;
   hermesApiKey: string;
+  hermesModel: string;
   speachesApiUrl: string;
   speachesApiKey: string;
   kokoroApiUrl: string;
@@ -30,6 +31,7 @@ export interface Config {
   publicDir: string;
   presetsFile: string;
   port: number;
+  mcpApiKey: string;
 }
 
 function getEnv(key: string, defaultValue?: string): string {
@@ -70,6 +72,7 @@ export const config: Config = {
   appPassword: getEnv("APP_PASSWORD"),
   hermesApiUrl: getEnv("HERMES_API_URL", "http://localhost:8642").replace(/\/$/, ""),
   hermesApiKey: getEnv("HERMES_API_KEY", ""),
+  hermesModel: getEnv("HERMES_MODEL", "hermes-agent"),
   speachesApiUrl: getEnv("SPEACHES_API_URL", "http://localhost:8000"),
   speachesApiKey: getEnv("SPEACHES_API_KEY", ""),
   kokoroApiUrl: getEnv("KOKORO_API_URL", ""),
@@ -85,6 +88,7 @@ export const config: Config = {
   publicDir: getEnv("PUBLIC_DIR", "/public"),
   presetsFile: getEnv("PRESETS_FILE", "/data/presets.json"),
   port: getEnvInt("PORT", 9091),
+  mcpApiKey: getEnv("MCP_API_KEY", ""),
 };
 
 export type { Config as ConfigType };
