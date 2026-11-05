@@ -27,6 +27,7 @@
  * @property {boolean} [Done=true] - Include completed tasks (default true)
  * @property {boolean} [Scheduled=true] - Include scheduled tasks (default true)
  * @property {boolean} [Due=true] - Include tasks with due date (default true)
+ * @property {boolean} [unset] - Filter tasks without any date (doneDate, due, scheduled)
  */
 
 /**

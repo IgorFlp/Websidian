@@ -57,7 +57,7 @@ const TOOLS: Tool[] = [
   {
     name: "tasks_list",
     description: "List tasks with optional filtering by date range, completion status, scheduled/due dates, vault, and path",
-    inputSchema: {
+inputSchema: {
       type: "object",
       properties: {
         vault: { type: "number", description: "Vault index (default: 0)", default: 0 },
@@ -68,8 +68,8 @@ const TOOLS: Tool[] = [
         Done: { type: "boolean", description: "Include completed tasks (default: true)", default: true },
         Scheduled: { type: "boolean", description: "Include scheduled tasks (default: true)", default: true },
         Due: { type: "boolean", description: "Include tasks with due date (default: true)", default: true },
+        unset: { type: "boolean", description: "Filter tasks without any date (doneDate, due, scheduled)" },
       },
-      additionalProperties: false,
     },
   },
   {

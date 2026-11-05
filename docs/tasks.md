@@ -18,27 +18,8 @@
 		    - Get/terminal HTML components structure:  ```<!-- ==== MESSAGE BLOCK (server‑side rendered) ==== --> <div class="mb-6"> {/* Header – agent name & timestamp */} <div class="flex items-center gap-2 text-label-sm font-label-sm"> <div class="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(208,188,255,0.8)]"></div> <span class="font-code-md text-code-md font-semibold text-primary">{{AGENT_NAME}}</span> <span class="text-outline">•</span> <span class="px-1.5 py-0.2 rounded bg-surface-container-high text-primary border border-outline-variant/30 font-code-md">{{ELAPSED_TIME}}</span> </div> {/* Body – ANSI‑converted text (already HTML‑escaped) */} <div class="bg-surface-container-lowest/70 border-l-2 border-primary border-t border-r border-b border-outline-variant/30 rounded-r-lg rounded-bl-lg p-4 sm:p-5 space-y-4"> <p class="text-on-surface font-body-md leading-relaxed"> {{MESSAGE_TEXT}} </p> {/* Optional CLI snippet (can be omitted if not needed) */} <div class="rounded-md bg-surface-container-lowest border border-outline-variant/40 overflow-hidden font-code-md text-code-md mt-3"> <div class="bg-surface-container-high/40 px-3 py-1.5 border-b border-outline-variant/30 flex items-center justify-between text-label-sm text-outline"> <span class="text-on-surface-variant font-code-md">{{COMMAND_LINE}}</span> <span class="text-primary font-medium">{{EXIT_CODE}}</span> </div> <div class="p-3 space-y-1 text-on-surface-variant leading-5 text-sm"> <p class="text-outline">{{LOG_LINE_1}}</p> <p><span class="text-secondary">[STREAM]</span> {{LOG_LINE_2}}</p> <p><span class="text-primary">[BENCH]</span> {{LOG_LINE_3}}</p> <p><span class="text-tertiary">[BUFFER]</span> {{LOG_LINE_4}}</p> <p class="text-primary font-semibold pt-1">{{LOG_LINE_5}}</p> </div> </div> {/* Audio player – only the LAST block gets autoplay */} <div class="bg-surface-container-high/30 border border-outline-variant/30 rounded-lg p-2.5 sm:p-3 flex items-center justify-between gap-3"> {/* Play button */} <div class="flex items-center gap-3"> <button class="w-8 h-8 rounded-full bg-primary text-on-primary-container flex items-center justify-center hover:bg-surface-tint active:scale-95 transition-all shadow-[0_0_10px_rgba(208,188,255,0.35)] flex-shrink-0" title="Reproduzir Síntese Vocal"> <span class="material-symbols-outlined text-[18px]" data-icon="play_arrow">play_arrow</span> </button> {/* Audio info */} <div class="flex flex-col"> <span class="font-code-md text-code-md text-primary font-medium text-xs sm:text-sm">Síntese Vocal Agêntica</span> <span class="font-label-sm text-label-sm text-outline text-[11px]">{{AUDIO_DURATION}} • Hermes Neural Voxtral</span> </div> </div> {/* Waveform indicator (simple visual) */} <div class="flex items-center gap-1 h-5 px-2 bg-surface-container-lowest/60 rounded border border-outline-variant/20"> <span class="w-1 bg-primary/40 h-2 rounded-full"></span> <span class="w-1 bg-primary/70 h-3.5 rounded-full"></span> <span class="w-1 bg-primary h-4 rounded-full"></span> <span class="w-1 bg-primary h-2.5 rounded-full"></span> <span class="w-1 bg-primary h-4.5 rounded-full"></span> <span class="w-1 bg-primary/60 h-3 rounded-full"></span> <span class="w-1 bg-outline-variant h-2 rounded-full"></span> <span class="w-1 bg-outline-variant h-3.5 rounded-full"></span> <span class="w-1 bg-outline-variant h-1.5 rounded-full"></span> </div> </div> </div> </div>
 		    ```
     - [x] Definir esquemas de request/response (JSON) para cada endpoint – response incluirá campo html (string) contendo o trecho pronto para inserir no DOM 
-    - [ ] Escrever arquivo OpenSpec (YAML/JSON) contendo: paths, parameters, responses, exemplos de payload
-    - [ ] Incluir tratamento de erro (500, 400) e cabeçalhos de CORS (se necessário)
 - [x] US01-T03 - Implementação do backend 📅 2026-10-02 ✅ 2026-10-02
-    - [ ] Criar servidor Node.js/Express mínimo (ou usar módulo http puro)
-    - [ ] Adicionar dependência ansi-up (ou similar) para converter códigos ANSI em HTML
-    - [ ] Implementar spawn do processo Hermes em PTY (child_process.spawn)
-    - [ ] Ler continuamente a saída do PTY e armazenar em buffer linear com timestamp
-    - [ ] Detectar linhas de resposta da IA (heurística: prompt do Hermes ou padrão específico)
-    - [ ] Para cada linha de IA, chamar a ferramenta de TTS do Hermes (text_to_speech) e salvar o arquivo MP3 em diretório temporário (máx 10 arquivos, LRU)
-    - [ ] Converter todo o output bruto (incluindo sequências ANSI) para HTML usando ansi-up antes de enviar ao cliente
-    - [ ] Implementar endpoint /terminal/poll que retorna JSON: { since, html, audio: [{url, text}] }
-    - [ ] Implementar endpoint /terminal/input (POST) que escreve no stdin do processo Hermes
-    - [ ] Adicionar lógica de respawn do processo Hermes caso ele termine inesperadamente
-    - [ ] Limpar arquivos de áudio antigos (mais de 10 min ou quando >10)
 - [x] US01-T04 - Teste de backend no Swagger (ou equivalente) 📅 2026-10-02 ✅ 2026-10-02
-    - [ ] Iniciar o servidor localmente e apontar a UI do Swagger para o arquivo OpenSpec
-    - [ ] Verificar que ambos os endpoints aparecem e são executáveis
-    - [ ] Testar /terminal/poll com since=0 → receber html contendo cores/estilos e (eventualmente) áudio
-    - [ ] Testar /terminal/input enviando um comando simples (ex.: echo ola) e confirmar que a saída HTML aparece na próxima chamada de poll
-    - [ ] Verificar que arquivos de áudio são gerados e removidos conforme a política de retenção
-    - [ ] Validar que o HTML inserido em um <div> renderiza exatamente como o Hermes no CLI (cores, negrito, etc.)
 - [x] US01-T05 - Criação da spec do frontend 📅 2026-10-02 ✅ 2026-10-02
     - [ ] Definir contrato de comunicação:
         GET /terminal/poll?since=<ts> → {since, html:string, audio:[{url,text}]}
@@ -54,16 +35,16 @@
     - [x] US02-T03 - Criar especificação de melhoria com ID e estrutura de dados 📅 2026-10-15 ✅ 2026-10-16
     - [x] US02-T04 - Aplicação da especificação de melhoria 📅 2026-10-15 ✅ 2026-10-16
 - [ ] US03 - Melhoria de Ux
-    - [ ] US03-T01 - Refatorar Chat de polling -> Event based rendering 📅 2026-10-19
-    - [ ] US03-T02 - Melhorias de estilo 📅 2026-10-19
+    - [ ] US03-T01 - Refatorar Chat de polling -> Event based rendering 📅 2026-11-05
+    - [ ] US03-T02 - Melhorias de estilo 📅 2026-11-05
         - [ ] Animação para Audio sendo gerado após play
         - [ ] Animação para Resposta sendo gerada após send
         - [ ] Centralização e correção de icons
         - [ ] Troca de icons com base no estado do botão (play - gerando - pause)
-    - [ ] US03-T03 - Adicionar player de recording na mensagem do usuário abaixo do texto 📅 2026-10-19
-    - [ ] US03-T04 - Adicionar texto selecionável 📅 2026-10-19
-    - [ ] US03-T05 - Fixar Debugger no topo direito do chat container e mudar o icone 📅 2026-10-19
-    - [ ] US03-T06 - Implementar seletor de sessions para exclusão 📅 2026-10-19
+    - [ ] US03-T03 - Adicionar player de recording na mensagem do usuário abaixo do texto 📅 2026-11-05
+    - [ ] US03-T04 - Adicionar texto selecionável 📅 2026-11-05
+    - [ ] US03-T05 - Fixar Debugger no topo direito do chat container e mudar o icone 📅 2026-11-05
+    - [ ] US03-T06 - Implementar seletor de sessions para exclusão 📅 2026-11-05
     - [ ] Criar página HTML mínima com:
         <div id=\"terminal\" style=\"white-space:pre-wrap; font-family:monospace;\"></div>
         <input id=\"cmd\" type=\"text\" placeholder=\"Digite o comando…\"> + botão Enviar (ou captura de Enter)
@@ -87,7 +68,7 @@
     - [ ] US04-T04 - Implementar seleção de provider/model no front e backend
 
 - [ ] US05 - Websidian MCP
-    - [x] US05-T01 - Descrever endpoints (action based) com base na API
+    - [x] US05-T01 - Descrever endpoints (action based) com base na API ✅ 2026-11-04
         Precisamos criar um MCP para utilizar as funcionalidades presentes na API do websidian no nosso Hermes ou qualquer outro harness de IA, principalmente para gestão de contexto e evitar a necessidade de execução de codigo para buscas de tasks.
 
         **Lista Consolidada de Tools MCP (aprovada):**
@@ -118,8 +99,8 @@
         - Voice/Audio (TTS, STT, upload) — API do usuário gerencia, não o Hermes
         - Terminal polling — será removido em breve
 
-    - [x] US05-T02 - Criar rascunho do planejamento em reunião com a IA
-    - [ ] US05-T03 - Criar a spec completa da alteração
+    - [x] US05-T02 - Criar rascunho do planejamento em reunião com a IA ✅ 2026-11-04
+    - [x] US05-T03 - Criar a spec completa da alteração ✅ 2026-11-04
     /opsx:propose Websidian MCP
     Precisamos criar um MCP para que o Hermes acesse as funcionalidades do Websidian e gaste menos contexto com Regex.
 
@@ -170,6 +151,21 @@
         - Voice/Audio (TTS, STT, upload) — API do usuário gerencia, não o Hermes
         - Terminal polling — será removido em breve
 
-    - [ ] US05-T04 - Aplicar a spec da alteração
+    - [x] US05-T04 - Aplicar a spec da alteração ✅ 2026-11-04
+    - [ ] US05-T05 - Websidian task management tools
+        /opsx:propose Websidian-task-tools
+        Criar chamadas de API e ações no MCP para transformar todas as ações de tasks em deterministicos
+        Agendar due (Reagenda se data existir)
+        Agendar scheduled (Reagenda se data existir)
+        Marcar done (ja funciona com o toggle)
+        Deletar task (MCP chama, codigo deterministico busca e elimina a linha)
+        Criar task (Search file retorna o arquivo mais provavel e um system prompt pequeno indicando como e onde criar a task ex: Siga o padrão de nomeclatura se voce precisa criar uma task realtivo a US01-T01 teste, então crie uma linha abaixo dela com US01-T02-{texto da task}
 
+        Lembrete de sintaxe do obsidian-tasks
+        Scheduled: ⏳ YYYY-MM-DD
+        Recurring: 🔁 every month  (every day, every 5 weeks...)
+        Due: 📅 YYYY-MM-DD  
+        Done: ✅ YYYY-MM-DD
+
+        
 - [ ] US06 - Hermes button na page schedule

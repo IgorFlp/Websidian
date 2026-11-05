@@ -37,6 +37,7 @@ export interface TaskFilter {
   Done?: boolean;
   Scheduled?: boolean;
   Due?: boolean;
+  unset?: boolean;
 }
 
 export class TasksService {
@@ -160,6 +161,7 @@ export class TasksService {
       Done = true,
       Scheduled = true,
       Due = true,
+      unset,
     } = filter;
 
     // Filter by vault and path prefix first (these are applied at scan time typically)
@@ -204,6 +206,11 @@ export class TasksService {
 
     if (Due === false) {
       filtered = filtered.filter((task) => !task.due);
+    }
+
+    // Unset filter: when true, only include tasks without any date (doneDate, due, scheduled)
+    if (unset === true) {
+      filtered = filtered.filter((task) => !task.doneDate && !task.due && !task.scheduled);
     }
 
     return filtered;

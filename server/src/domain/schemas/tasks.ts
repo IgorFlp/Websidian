@@ -34,6 +34,7 @@ export const TaskFilterSchema = z.object({
   Done: z.boolean().optional().default(true).describe("Include completed tasks (default true)"),
   Scheduled: z.boolean().optional().default(true).describe("Include scheduled tasks (default true)"),
   Due: z.boolean().optional().default(true).describe("Include tasks with due date (default true)"),
+  unset: z.boolean().optional().describe("Filter tasks without any date (doneDate, due, scheduled)"),
 }).describe("Filter criteria for task listing");
 
 export type Task = z.infer<typeof TaskSchema>;
