@@ -1,6 +1,6 @@
 import { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
-import { TasksService, type TaskFilter } from "../service/tasks.service.js";
+import { TasksService, type TaskFilter, type ScheduleDateOptions, type DeleteTaskOptions, type CreateTaskOptions } from "../service/tasks.service.js";
 import { config } from "../config/index.js";
 
 const tasksService = new TasksService();
@@ -45,6 +45,46 @@ const taskFilterSchema = z.object({
   Done: z.boolean().optional().default(true).describe("Include completed tasks (default true)"),
   Scheduled: z.boolean().optional().default(true).describe("Include scheduled tasks (default true)"),
   Due: z.boolean().optional().default(true).describe("Include tasks with due date (default true)"),
+});
+
+const taskScheduleRequestSchema = z.object({
+  file: z.string().min(1).describe("File path (e.g., notes/tasks.md)"),
+  taskText: z.string().min(1).describe("Task text to match"),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe("Date in YYYY-MM-DD format"),
+  dateType: z.enum(["due", "scheduled"]).describe("Type of date to schedule"),
+  vault: z.coerce.number().int().nonnegative().optional().default(0).describe("Vault index (default: 0)"),
+});
+
+const taskScheduleResponseSchema = z.object({
+  ok: z.boolean(),
+  task: taskSchema.optional(),
+  error: z.object({ code: z.string(), message: z.string() }).optional(),
+});
+
+const taskDeleteRequestSchema = z.object({
+  file: z.string().min(1).describe("File path (e.g., notes/tasks.md)"),
+  taskText: z.string().min(1).describe("Task text to match"),
+  vault: z.coerce.number().int().nonnegative().optional().default(0).describe("Vault index (default: 0)"),
+});
+
+const taskDeleteResponseSchema = z.object({
+  ok: z.boolean(),
+  deletedText: z.string().optional(),
+  error: z.object({ code: z.string(), message: z.string() }).optional(),
+});
+
+const taskCreateRequestSchema = z.object({
+  file: z.string().min(1).describe("File path (e.g., notes/tasks.md)"),
+  taskText: z.string().min(1).describe("Task text to create"),
+  referenceTask: z.string().optional().describe("Reference task text to insert below"),
+  vault: z.coerce.number().int().nonnegative().optional().default(0).describe("Vault index (default: 0)"),
+});
+
+const taskCreateResponseSchema = z.object({
+  ok: z.boolean(),
+  task: taskSchema.optional(),
+  error: z.object({ code: z.string(), message: z.string() }).optional(),
+  suggestion: z.object({ file: z.string(), confidence: z.number() }).optional(),
 });
 
 function requireApiKeyOrSession(request: any, reply: any, done: () => void) {
@@ -150,6 +190,86 @@ export const tasksRoutes: FastifyPluginAsyncZod = async (fastify) => {
         return reply.status(400).send({ error: "Not a task line" });
       }
       return reply.status(500).send({ error: err instanceof Error ? err.message : "Failed to toggle task" });
+    }
+  });
+
+  fastify.post("/api/tasks/schedule", {
+    schema: {
+      body: taskScheduleRequestSchema,
+      response: {
+        200: taskScheduleResponseSchema,
+        400: z.object({ error: z.string() }),
+        404: z.object({ error: z.string() }),
+        500: z.object({ error: z.string() }),
+      },
+    },
+    preHandler: requireApiKeyOrSession,
+  }, async (request, reply) => {
+    const { file, taskText, date, dateType, vault } = request.body as ScheduleDateOptions & { vault?: number };
+    try {
+      const result = tasksService.scheduleTaskDate({ file, taskText, date, dateType, vaultIndex: vault ?? 0 });
+      if (!result.ok) {
+        const status = result.error?.code === "NOT_FOUND" ? 404 :
+                       result.error?.code === "AMBIGUOUS_MATCH" ? 400 :
+                       result.error?.code === "INVALID_DATE" ? 400 :
+                       result.error?.code === "INVALID_DATE_TYPE" ? 400 : 500;
+        return reply.status(status).send({ error: result.error?.message || "Failed to schedule date" });
+      }
+      return result;
+    } catch (err) {
+      return reply.status(500).send({ error: err instanceof Error ? err.message : "Failed to schedule date" });
+    }
+  });
+
+  fastify.post("/api/tasks/delete", {
+    schema: {
+      body: taskDeleteRequestSchema,
+      response: {
+        200: taskDeleteResponseSchema,
+        400: z.object({ error: z.string() }),
+        404: z.object({ error: z.string() }),
+        500: z.object({ error: z.string() }),
+      },
+    },
+    preHandler: requireApiKeyOrSession,
+  }, async (request, reply) => {
+    const { file, taskText, vault } = request.body as DeleteTaskOptions & { vault?: number };
+    try {
+      const result = tasksService.deleteTask({ file, taskText, vaultIndex: vault ?? 0 });
+      if (!result.ok) {
+        const status = result.error?.code === "NOT_FOUND" ? 404 :
+                       result.error?.code === "AMBIGUOUS_MATCH" ? 400 : 500;
+        return reply.status(status).send({ error: result.error?.message || "Failed to delete task" });
+      }
+      return result;
+    } catch (err) {
+      return reply.status(500).send({ error: err instanceof Error ? err.message : "Failed to delete task" });
+    }
+  });
+
+  fastify.post("/api/tasks/create", {
+    schema: {
+      body: taskCreateRequestSchema,
+      response: {
+        200: taskCreateResponseSchema,
+        400: z.object({ error: z.string() }),
+        404: z.object({ error: z.string() }),
+        500: z.object({ error: z.string() }),
+      },
+    },
+    preHandler: requireApiKeyOrSession,
+  }, async (request, reply) => {
+    const { file, taskText, referenceTask, vault } = request.body as CreateTaskOptions & { vault?: number };
+    try {
+      const result = tasksService.createTask({ file, taskText, referenceTask, vaultIndex: vault ?? 0 });
+      if (!result.ok) {
+        const status = result.error?.code === "NOT_FOUND" ? 404 :
+                       result.error?.code === "REFERENCE_NOT_FOUND" ? 404 : 500;
+        return reply.status(status).send({ error: result.error?.message || "Failed to create task" });
+      }
+      return result;
+    } catch (err) {
+      return reply.status(500).send({ error: err instanceof Error ? err.message : "Failed to create task" });
     }
   });
 };

@@ -1,6 +1,15 @@
 import fs from "fs";
 import path from "path";
 import { config } from "../config/index.js";
+import {
+  findTaskLine,
+  replaceDateInLine,
+  removeTaskLine,
+  insertTaskLine,
+  validateDate,
+  validateDateType,
+  generateTaskId,
+} from "../lib/task-parser.js";
 
 const IGNORED_DIRS = [".obsidian", ".trash", ".git", "node_modules"];
 
@@ -38,6 +47,46 @@ export interface TaskFilter {
   Scheduled?: boolean;
   Due?: boolean;
   unset?: boolean;
+}
+
+export interface ScheduleDateOptions {
+  file: string;
+  taskText: string;
+  date: string;
+  dateType: "due" | "scheduled";
+  vaultIndex?: number;
+}
+
+export interface DeleteTaskOptions {
+  file: string;
+  taskText: string;
+  vaultIndex?: number;
+}
+
+export interface CreateTaskOptions {
+  file: string;
+  taskText: string;
+  referenceTask?: string;
+  vaultIndex?: number;
+}
+
+export interface ScheduleDateResult {
+  ok: boolean;
+  task?: Task;
+  error?: { code: string; message: string };
+}
+
+export interface DeleteTaskResult {
+  ok: boolean;
+  deletedText?: string;
+  error?: { code: string; message: string };
+}
+
+export interface CreateTaskResult {
+  ok: boolean;
+  task?: Task;
+  error?: { code: string; message: string };
+  suggestion?: { file: string; confidence: number };
 }
 
 export class TasksService {
@@ -259,6 +308,135 @@ export class TasksService {
     };
 
     return { ok: true, task };
+  }
+
+  scheduleTaskDate(options: ScheduleDateOptions): ScheduleDateResult {
+    const { file, taskText, date, dateType, vaultIndex = 0 } = options;
+    const vaultPath = this.getVaultPath(vaultIndex);
+    const fullPath = path.join(vaultPath, file);
+
+    if (!validateDate(date)) {
+      return { ok: false, error: { code: "INVALID_DATE", message: "Invalid date format. Use YYYY-MM-DD" } };
+    }
+
+    if (!validateDateType(dateType)) {
+      return { ok: false, error: { code: "INVALID_DATE_TYPE", message: "dateType must be 'due' or 'scheduled'" } };
+    }
+
+    if (!fs.existsSync(fullPath)) {
+      return { ok: false, error: { code: "NOT_FOUND", message: "File not found" } };
+    }
+
+    const content = fs.readFileSync(fullPath, "utf8");
+
+    try {
+      const match = findTaskLine(content, taskText);
+      if (!match) {
+        return { ok: false, error: { code: "NOT_FOUND", message: "Task not found" } };
+      }
+
+      const newLine = replaceDateInLine(match.line, dateType, date);
+      const lines = content.split("\n");
+      lines[match.lineNumber] = newLine;
+      fs.writeFileSync(fullPath, lines.join("\n"));
+
+      const parsed = this.parseTask(newLine);
+      if (!parsed) {
+        return { ok: true };
+      }
+
+      const task: Task = {
+        ...parsed,
+        file,
+        line: match.lineNumber,
+        vaultIndex,
+      };
+
+      return { ok: true, task };
+    } catch (err) {
+      if (err instanceof Error && err.message === "AMBIGUOUS_MATCH") {
+        return { ok: false, error: { code: "AMBIGUOUS_MATCH", message: "Multiple tasks match the given text" } };
+      }
+      return { ok: false, error: { code: "ERROR", message: err instanceof Error ? err.message : "Failed to schedule date" } };
+    }
+  }
+
+  deleteTask(options: DeleteTaskOptions): DeleteTaskResult {
+    const { file, taskText, vaultIndex = 0 } = options;
+    const vaultPath = this.getVaultPath(vaultIndex);
+    const fullPath = path.join(vaultPath, file);
+
+    if (!fs.existsSync(fullPath)) {
+      return { ok: false, error: { code: "NOT_FOUND", message: "File not found" } };
+    }
+
+    const content = fs.readFileSync(fullPath, "utf8");
+
+    try {
+      const match = findTaskLine(content, taskText);
+      if (!match) {
+        return { ok: false, error: { code: "NOT_FOUND", message: "Task not found" } };
+      }
+
+      const newContent = removeTaskLine(content, match.lineNumber);
+      fs.writeFileSync(fullPath, newContent);
+
+      return { ok: true, deletedText: match.line };
+    } catch (err) {
+      if (err instanceof Error && err.message === "AMBIGUOUS_MATCH") {
+        return { ok: false, error: { code: "AMBIGUOUS_MATCH", message: "Multiple tasks match the given text" } };
+      }
+      return { ok: false, error: { code: "ERROR", message: err instanceof Error ? err.message : "Failed to delete task" } };
+    }
+  }
+
+  createTask(options: CreateTaskOptions): CreateTaskResult {
+    const { file, taskText, referenceTask, vaultIndex = 0 } = options;
+    const vaultPath = this.getVaultPath(vaultIndex);
+    const fullPath = path.join(vaultPath, file);
+
+    if (!fs.existsSync(fullPath)) {
+      return { ok: false, error: { code: "NOT_FOUND", message: "File not found" } };
+    }
+
+    const content = fs.readFileSync(fullPath, "utf8");
+
+    try {
+      let finalTaskText = taskText;
+      let referenceLineNumber: number | null = null;
+
+      if (referenceTask) {
+        const match = findTaskLine(content, referenceTask);
+        if (!match) {
+          return { ok: false, error: { code: "REFERENCE_NOT_FOUND", message: "Reference task not found" } };
+        }
+        referenceLineNumber = match.lineNumber;
+        finalTaskText = generateTaskId(match.parsed.text, taskText);
+      }
+
+      const newTaskLine = `- [ ] ${finalTaskText}`;
+      const newContent = insertTaskLine(content, referenceLineNumber, newTaskLine);
+      fs.writeFileSync(fullPath, newContent);
+
+      const lines = newContent.split("\n");
+      const insertedLineNumber = referenceLineNumber !== null ? referenceLineNumber + 1 : lines.findIndex(l => l === newTaskLine);
+      const parsed = this.parseTask(newTaskLine);
+
+      if (!parsed) {
+        return { ok: true };
+      }
+
+      const task: Task = {
+        ...parsed,
+        file,
+        line: insertedLineNumber,
+        vaultIndex,
+      };
+
+      return { ok: true, task };
+    } catch (err) {
+      return { ok: false, error: { code: "ERROR", message: err instanceof Error ? err.message : "Failed to create task" } };
+    }
   }
 }
 

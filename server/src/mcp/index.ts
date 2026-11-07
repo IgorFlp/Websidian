@@ -87,6 +87,51 @@ inputSchema: {
     },
   },
   {
+    name: "task_schedule",
+    description: "Schedule or reschedule a due date (📅) or scheduled date (⏳) on an existing task",
+    inputSchema: {
+      type: "object",
+      properties: {
+        file: { type: "string", description: "File path (e.g., notes/tasks.md)" },
+        taskText: { type: "string", description: "Task text to match exactly" },
+        date: { type: "string", description: "Date in YYYY-MM-DD format", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+        dateType: { type: "string", enum: ["due", "scheduled"], description: "Type of date to schedule: 'due' (📅) or 'scheduled' (⏳)" },
+        vault: { type: "number", description: "Vault index (default: 0)", default: 0 },
+      },
+      required: ["file", "taskText", "date", "dateType"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "task_delete",
+    description: "Delete a task by finding and removing its exact line",
+    inputSchema: {
+      type: "object",
+      properties: {
+        file: { type: "string", description: "File path (e.g., notes/tasks.md)" },
+        taskText: { type: "string", description: "Task text to match exactly" },
+        vault: { type: "number", description: "Vault index (default: 0)", default: 0 },
+      },
+      required: ["file", "taskText"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "task_create",
+    description: "Create a new task with optional reference task for positioning and naming convention",
+    inputSchema: {
+      type: "object",
+      properties: {
+        file: { type: "string", description: "File path (e.g., notes/tasks.md)" },
+        taskText: { type: "string", description: "Task text to create" },
+        referenceTask: { type: "string", description: "Optional reference task text to insert below (enables naming convention like US01-T02 below US01-T01)" },
+        vault: { type: "number", description: "Vault index (default: 0)", default: 0 },
+      },
+      required: ["file", "taskText"],
+      additionalProperties: false,
+    },
+  },
+  {
     name: "note_create",
     description: "Create a new note or append to existing note",
     inputSchema: {
@@ -230,6 +275,30 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "task_toggle": {
         const { file, line, vault = 0 } = parsedArgs as { file: string; line: number; vault?: number };
         const result = await callApi("/api/tasks/toggle", "POST", { file, line, vault: Number(vault) }, apiKey);
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      case "task_schedule": {
+        const { file, taskText, date, dateType, vault = 0 } = parsedArgs as { file: string; taskText: string; date: string; dateType: "due" | "scheduled"; vault?: number };
+        const result = await callApi("/api/tasks/schedule", "POST", { file, taskText, date, dateType, vault: Number(vault) }, apiKey);
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      case "task_delete": {
+        const { file, taskText, vault = 0 } = parsedArgs as { file: string; taskText: string; vault?: number };
+        const result = await callApi("/api/tasks/delete", "POST", { file, taskText, vault: Number(vault) }, apiKey);
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      case "task_create": {
+        const { file, taskText, referenceTask, vault = 0 } = parsedArgs as { file: string; taskText: string; referenceTask?: string; vault?: number };
+        const result = await callApi("/api/tasks/create", "POST", { file, taskText, referenceTask, vault: Number(vault) }, apiKey);
         return {
           content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
         };
