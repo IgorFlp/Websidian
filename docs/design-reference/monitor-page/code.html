@@ -1,0 +1,814 @@
+<!DOCTYPE html><html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>HERMES // OS - Websidian Server Live Monitor</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&amp;family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&amp;family=Space+Grotesk:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<!-- Tailwind Script -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config verbatum from DS -->
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "on-primary-fixed": "#23005c",
+            "tertiary-container": "#928cb1",
+            "on-secondary": "#381385",
+            "primary-fixed-dim": "#d0bcff",
+            "primary-container": "#a078ff",
+            "secondary": "#cebdff",
+            "tertiary": "#c8c2e9",
+            "on-primary-fixed-variant": "#5516be",
+            "error": "#ffb4ab",
+            "on-secondary-fixed": "#21005e",
+            "surface-container-high": "#2e2735",
+            "primary": "#d0bcff",
+            "surface-bright": "#3d3645",
+            "on-secondary-fixed-variant": "#4f319c",
+            "surface": "#16111d",
+            "on-error": "#690005",
+            "on-primary-container": "#340080",
+            "outline-variant": "#494454",
+            "surface-tint": "#d0bcff",
+            "on-tertiary-fixed-variant": "#474363",
+            "on-tertiary": "#302c4b",
+            "secondary-container": "#4f319c",
+            "surface-dim": "#16111d",
+            "surface-container-low": "#1f1926",
+            "on-tertiary-fixed": "#1b1735",
+            "secondary-fixed-dim": "#cebdff",
+            "on-error-container": "#ffdad6",
+            "inverse-on-surface": "#342e3c",
+            "on-surface-variant": "#cbc3d7",
+            "on-surface": "#eadff1",
+            "inverse-surface": "#eadff1",
+            "outline": "#958ea0",
+            "error-container": "#93000a",
+            "surface-container-lowest": "#110c18",
+            "background": "#16111d",
+            "on-background": "#eadff1",
+            "on-tertiary-container": "#2a2644",
+            "surface-variant": "#393240",
+            "tertiary-fixed": "#e5deff",
+            "on-primary": "#3c0091",
+            "primary-fixed": "#e9ddff",
+            "surface-container-highest": "#393240",
+            "inverse-primary": "#6d3bd7",
+            "on-secondary-container": "#bea8ff",
+            "tertiary-fixed-dim": "#c8c2e9",
+            "secondary-fixed": "#e8ddff",
+            "surface-container": "#231d2a"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          "spacing": {
+            "margin-lg": "2rem",
+            "margin-md": "1.5rem",
+            "space-lg": "1.5rem",
+            "space-sm": "0.5rem",
+            "margin": "1rem",
+            "space-xs": "0.25rem",
+            "space-xl": "2rem",
+            "space-md": "1rem",
+            "gutter": "1rem",
+            "gutter-lg": "1.5rem"
+          },
+          "fontFamily": {
+            "headline-lg-mobile": ["Space Grotesk"],
+            "label-sm": ["JetBrains Mono"],
+            "code-lg": ["JetBrains Mono"],
+            "headline-lg": ["Space Grotesk"],
+            "headline-xl-mobile": ["Space Grotesk"],
+            "body-sm": ["Geist"],
+            "headline-xl": ["Space Grotesk"],
+            "headline-md": ["Space Grotesk"],
+            "body-md": ["Geist"],
+            "label-md": ["JetBrains Mono"],
+            "code-md": ["JetBrains Mono"],
+            "body-lg": ["Geist"]
+          },
+          "fontSize": {
+            "headline-lg-mobile": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "500" }],
+            "label-sm": ["10px", { "lineHeight": "14px", "letterSpacing": "0.08em", "fontWeight": "500" }],
+            "code-lg": ["14px", { "lineHeight": "22px", "letterSpacing": "-0.01em", "fontWeight": "500" }],
+            "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "500" }],
+            "headline-xl-mobile": ["30px", { "lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+            "body-sm": ["12px", { "lineHeight": "18px", "letterSpacing": "0.01em", "fontWeight": "400" }],
+            "headline-xl": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.03em", "fontWeight": "600" }],
+            "headline-md": ["22px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "500" }],
+            "body-md": ["14px", { "lineHeight": "22px", "letterSpacing": "0em", "fontWeight": "400" }],
+            "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.04em", "fontWeight": "500" }],
+            "code-md": ["13px", { "lineHeight": "20px", "letterSpacing": "0em", "fontWeight": "400" }],
+            "body-lg": ["16px", { "lineHeight": "26px", "letterSpacing": "-0.01em", "fontWeight": "400" }]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+      display: inline-block;
+      vertical-align: middle;
+      line-height: 1;
+    }
+    .custom-scroll::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: #110c18;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #494454;
+      border-radius: 2px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb:hover {
+      background: #a078ff;
+    }
+    @keyframes pulse-slow {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.92); }
+    }
+    .animate-pulse-slow {
+      animation: pulse-slow 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    .scanline {
+      background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(160, 120, 255, 0.03) 50%, rgba(160, 120, 255, 0.03));
+      background-size: 100% 4px;
+    }
+  </style>
+</head>
+<body class="bg-surface text-on-surface font-body-md antialiased selection:bg-primary-container selection:text-on-primary-container min-h-screen flex flex-col pb-16 md:pb-6 scanline">
+<!-- TOP APP BAR (Shared Component Anchor) -->
+<header class="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-margin py-space-sm w-full bg-surface-container-lowest/85 backdrop-blur-md border-b border-outline-variant/30 shadow-sm shadow-surface-container-lowest">
+<div class="flex items-center gap-space-md">
+<div class="flex items-center gap-space-xs text-primary">
+<span class="material-symbols-outlined text-xl">terminal</span>
+<span class="font-headline-md text-headline-md font-bold tracking-wider text-primary uppercase">HERMES // OS</span>
+</div>
+<!-- Node Badge -->
+<div class="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded bg-surface-container-low border border-outline-variant/40">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+</span>
+<span class="font-code-md text-code-md text-on-surface font-medium">srv-websidian-01</span>
+<span class="text-outline text-xs">•</span>
+<span class="font-label-sm text-label-sm text-emerald-400 tracking-wider">ONLINE</span>
+</div>
+<!-- Desktop Navigation Links -->
+<nav class="hidden md:flex items-center space-x-1 pl-space-md border-l border-outline-variant/20">
+<a class="px-3 py-1 font-code-md text-code-md text-outline hover:text-primary hover:bg-surface-container-high/40 rounded transition-colors duration-150" href="#">Terminal</a>
+<a class="px-3 py-1 font-code-md text-code-md text-primary font-semibold bg-surface-container-high/30 rounded border-b border-primary transition-colors duration-150" href="#">Telemetry</a>
+<a class="px-3 py-1 font-code-md text-code-md text-primary-fixed-dim hover:text-primary flex items-center gap-1.5 bg-primary-container/10 border border-primary/30 rounded" href="#">
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse-slow"></span>
+<span class="">Live Stream</span>
+</a>
+<a class="px-3 py-1 font-code-md text-code-md text-outline hover:text-primary hover:bg-surface-container-high/40 rounded transition-colors duration-150" href="#">Docker</a>
+<a class="px-3 py-1 font-code-md text-code-md text-outline hover:text-primary hover:bg-surface-container-high/40 rounded transition-colors duration-150" href="#">Alertas</a>
+</nav>
+</div>
+<!-- Right Telemetry Status Anchor -->
+<div class="flex items-center gap-space-sm">
+<div class="hidden lg:flex items-center gap-space-xs font-label-sm text-label-sm px-2.5 py-1 rounded bg-surface-container border border-outline-variant/30 text-on-surface-variant">
+<span class="text-primary font-semibold">BESZEL AGENT v0.9.1</span>
+<span class="text-outline">•</span>
+<span class="text-tertiary">UP 42d 14h</span>
+<span class="text-outline">•</span>
+<div class="flex items-center gap-1 text-emerald-400 font-mono">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+<span class="">TICK: 1s LIVE</span>
+</div>
+</div>
+<button class="p-1.5 text-primary hover:bg-surface-container-high/40 rounded transition-colors" title="Telemetry Feed Sensor">
+<span class="material-symbols-outlined text-xl">sensors</span>
+</button>
+</div>
+</header>
+<!-- MAIN VIEWPORT CONTAINER -->
+<main class="flex-1 mt-14 px-margin sm:px-margin-md max-w-7xl mx-auto w-full pt-space-md space-y-space-md">
+<!-- SUB-NAV / CONTROL DOCK: LIVE VIEW CONTROLLER -->
+<section class="flex flex-wrap items-center justify-between gap-space-sm p-3 rounded-lg bg-surface-container-lowest/80 border border-outline-variant/30 backdrop-blur-md shadow-sm">
+<div class="flex flex-wrap items-center gap-space-sm">
+<div class="flex items-center gap-2 pr-3 border-r border-outline-variant/30">
+<span class="text-primary font-headline-md text-headline-md font-semibold tracking-tight">Websidian Server Live Monitor</span>
+<span class="px-2 py-0.5 rounded font-label-sm text-label-sm uppercase bg-primary-container/20 text-primary border border-primary/40">Realtime Stream</span>
+</div>
+<!-- Historic Window Range Selector -->
+<div class="flex items-center bg-surface-container-low rounded border border-outline-variant/30 p-0.5">
+<button class="px-2.5 py-1 font-label-sm text-label-sm text-on-surface-variant hover:text-primary rounded transition-colors" id="btn-win-60s">Últimos 60s</button>
+<button class="px-2.5 py-1 font-label-sm text-label-sm bg-surface-container-high text-primary rounded font-semibold border border-primary/20" id="btn-win-5m">5 min</button>
+<button class="px-2.5 py-1 font-label-sm text-label-sm text-on-surface-variant hover:text-primary rounded transition-colors" id="btn-win-15m">15 min</button>
+</div>
+</div>
+<div class="flex items-center gap-space-sm">
+<!-- Interval & Ping Tracker -->
+<div class="flex items-center gap-2 px-2.5 py-1 rounded bg-surface-container-low border border-outline-variant/20 font-label-sm text-label-sm text-on-surface-variant">
+<span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+<span class="">Intervalo: <strong class="text-on-surface font-mono">1000ms</strong></span>
+<span class="text-outline">•</span>
+<span class="text-emerald-300 font-mono" id="latency-val">4.6ms</span>
+</div>
+<!-- Pause / Stream Toggle -->
+<button class="flex items-center gap-1.5 px-3 py-1 font-code-md text-code-md rounded bg-surface-container-high hover:bg-surface-variant text-on-surface border border-outline-variant/40 transition-colors" id="stream-toggle">
+<span class="material-symbols-outlined text-sm text-primary">pause_circle</span>
+<span id="stream-text" class="">Pausar</span>
+</button>
+<!-- Snapshot Button -->
+<button class="flex items-center gap-1 px-3 py-1 font-code-md text-code-md rounded bg-primary text-on-primary font-medium hover:bg-primary-fixed-dim transition-colors shadow-sm">
+<span class="material-symbols-outlined text-sm">download</span>
+<span class="">Exportar Snapshot</span>
+</button>
+</div>
+</section>
+<!-- ROW 1: CPU (PROCESSADOR AMD EPYC 7763) -->
+<article class="p-4 rounded-xl bg-surface-container-lowest/90 border border-outline-variant/30 hover:border-primary/40 transition-all duration-200">
+<div class="flex flex-col lg:flex-row gap-space-md items-stretch">
+<!-- Left Metrics Block -->
+<div class="w-full lg:w-72 flex-shrink-0 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-outline-variant/30 pb-3 lg:pb-0 lg:pr-4">
+<div>
+<div class="flex items-center justify-between mb-1">
+<span class="font-label-md text-label-md font-semibold text-primary uppercase tracking-wider flex items-center gap-1.5">
+<span class="material-symbols-outlined text-base text-primary">memory</span>
+                CPU // EPYC 7763
+              </span>
+<span class="font-label-sm text-label-sm text-emerald-400 px-1.5 py-0.5 rounded bg-surface-container-high border border-emerald-500/20">NORMAL</span>
+</div>
+<p class="font-body-sm text-body-sm text-outline mb-3">16 Cores / 32 Threads @ 3.82 GHz</p>
+<div class="grid grid-cols-2 gap-2 mb-2">
+<div class="p-2.5 rounded bg-surface-container-low border border-outline-variant/20">
+<span class="font-label-sm text-label-sm text-outline block">USO ATUAL</span>
+<span class="font-headline-md text-headline-md font-bold text-on-surface font-mono" id="cpu-metric-val">37.7<span class="text-sm text-primary font-normal">%</span></span>
+</div>
+<div class="p-2.5 rounded bg-surface-container-low border border-outline-variant/20">
+<span class="font-label-sm text-label-sm text-outline block">TEMPERATURA</span>
+<span class="font-headline-md text-headline-md font-bold text-amber-300 font-mono" id="cpu-temp-val">56<span class="text-sm text-outline font-normal">°C</span></span>
+</div>
+</div>
+</div>
+<div class="space-y-1.5 pt-2 text-on-surface-variant font-label-sm text-label-sm">
+<div class="flex justify-between items-center">
+<span class="text-outline">Governor:</span>
+<span class="font-mono text-tertiary">performance</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-outline">Thread Pool Load:</span>
+<span class="font-mono text-primary">11 / 32 active</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-outline">Throttle / Trips:</span>
+<span class="font-mono text-emerald-400">0 events</span>
+</div>
+</div>
+</div>
+<!-- Center/Right Continuous Chart -->
+<div class="flex-1 flex flex-col justify-between min-w-0">
+<div class="flex items-center justify-between pb-2 mb-1">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1.5 font-label-sm text-label-sm">
+<span class="w-3 h-1 rounded bg-primary"></span>
+<span class="text-on-surface">Uso CPU (%)</span>
+</div>
+<div class="flex items-center gap-1.5 font-label-sm text-label-sm">
+<span class="w-3 h-1 rounded bg-amber-400"></span>
+<span class="text-on-surface">Temp Core (°C)</span>
+</div>
+</div>
+<div class="font-label-sm text-label-sm text-outline font-mono">
+              Pico 60s: <span class="text-on-surface">48.9%</span> | Média: <span class="text-on-surface">33.1%</span>
+</div>
+</div>
+<!-- Dynamic SVG Wave Canvas -->
+<div class="w-full h-32 relative bg-surface-container-lowest rounded border border-outline-variant/20 overflow-hidden">
+<!-- Grid Lines overlay -->
+<div class="absolute inset-0 grid grid-rows-3 grid-cols-6 pointer-events-none opacity-20 border border-outline-variant/30">
+<div class="border-b border-r border-dashed border-outline"></div>
+<div class="border-b border-r border-dashed border-outline"></div>
+<div class="border-b border-r border-dashed border-outline"></div>
+<div class="border-b border-r border-dashed border-outline"></div>
+<div class="border-b border-r border-dashed border-outline"></div>
+<div class="border-b border-dashed border-outline"></div>
+<div class="border-b border-r border-dashed border-outline"></div>
+<div class="border-b border-r border-dashed border-outline"></div>
+<div class="border-b border-r border-dashed border-outline"></div>
+<div class="border-b border-r border-dashed border-outline"></div>
+<div class="border-b border-r border-dashed border-outline"></div>
+<div class="border-b border-dashed border-outline"></div>
+</div>
+<svg class="w-full h-full" id="svg-cpu" preserveAspectRatio="none" viewBox="0 0 600 120">
+<defs>
+<linearGradient id="grad-cpu-fill" x1="0%" x2="0%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#a078ff" stop-opacity="0.38"></stop>
+<stop offset="100%" stop-color="#a078ff" stop-opacity="0.0"></stop>
+</linearGradient>
+</defs>
+<!-- Filled area -->
+<path d="M 0 80 Q 70 62.11588810820504, 140 67.60030303676234 T 280 70.61174855594375 T 420 40.46117550435408 T 540 62.11588810820504 T 600 67.60030303676234 L 600 120 L 0 120 Z" fill="url(#grad-cpu-fill)" id="path-cpu-area"></path>
+<!-- Line usage -->
+<path d="M 0 80 Q 70 62.11588810820504, 140 67.60030303676234 T 280 70.61174855594375 T 420 40.46117550435408 T 540 62.11588810820504 T 600 67.60030303676234" fill="none" id="path-cpu-line" stroke="#d0bcff" stroke-linecap="round" stroke-width="2"></path>
+<!-- Temp secondary curve -->
+<path d="M 0 65 Q 60 62, 120 64 T 240 68 T 360 63 T 480 66 T 600 64" fill="none" id="path-cpu-temp" stroke="#fbbf24" stroke-dasharray="3 3" stroke-width="1.2"></path>
+</svg>
+</div>
+<div class="flex justify-between items-center pt-2 font-label-sm text-label-sm text-outline">
+<span class="">-60 seg</span>
+<span class="">-45 seg</span>
+<span class="">-30 seg</span>
+<span class="">-15 seg</span>
+<span class="text-primary font-mono font-semibold">Live (0s)</span>
+</div>
+</div>
+</div>
+</article>
+<!-- ROW 2: GPU (ACELERADOR RTX 4090) -->
+<article class="p-4 rounded-xl bg-surface-container-lowest/90 border border-outline-variant/30 hover:border-primary/40 transition-all duration-200">
+<div class="flex flex-col lg:flex-row gap-space-md items-stretch">
+<!-- Left Metrics Block -->
+<div class="w-full lg:w-72 flex-shrink-0 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-outline-variant/30 pb-3 lg:pb-0 lg:pr-4">
+<div>
+<div class="flex items-center justify-between mb-1">
+<span class="font-label-md text-label-md font-semibold text-secondary uppercase tracking-wider flex items-center gap-1.5">
+<span class="material-symbols-outlined text-base text-secondary">developer_board</span>
+                GPU // RTX 4090 24GB
+              </span>
+<span class="font-label-sm text-label-sm text-secondary-fixed-dim px-1.5 py-0.5 rounded bg-surface-container-high border border-secondary/30">CUDA 12.4</span>
+</div>
+<p class="font-body-sm text-body-sm text-outline mb-3">Power Draw: 215W / 450W Limit</p>
+<div class="grid grid-cols-3 gap-2 mb-2"><div class="p-2 rounded bg-surface-container-low border border-outline-variant/20"><span class="font-label-sm text-label-sm text-outline block">CORE LOAD</span><span class="font-headline-md text-headline-md font-bold text-on-surface font-mono" id="gpu-load-val">58.5<span class="text-sm text-secondary font-normal">%</span></span></div><div class="p-2 rounded bg-surface-container-low border border-outline-variant/20"><span class="font-label-sm text-label-sm text-outline block">VRAM ALLOC</span><span class="font-headline-md text-headline-md font-bold text-emerald-400 font-mono">14.4<span class="text-xs text-outline font-normal">/24G</span></span></div><div class="p-2 rounded bg-surface-container-low border border-outline-variant/20"><span class="font-label-sm text-label-sm text-outline block">TEMPERATURA</span><span class="font-headline-md text-headline-md font-bold text-amber-300 font-mono" id="gpu-temp-val">62<span class="text-sm text-outline font-normal">°C</span></span></div></div>
+</div>
+<div class="space-y-1.5 pt-2 text-on-surface-variant font-label-sm text-label-sm">
+<div class="flex justify-between items-center">
+<span class="text-outline">GPU Junction Temp:</span>
+<span class="font-mono text-on-surface">62°C</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-outline">Fan Tachometer:</span>
+<span class="font-mono text-tertiary">1420 RPM (42%)</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-outline">PCIe Bus Link:</span>
+<span class="font-mono text-emerald-400">Gen4 x16 @ 31.5 GB/s</span>
+</div>
+</div>
+</div>
+<!-- Center/Right Continuous Chart -->
+<div class="flex-1 flex flex-col justify-between min-w-0">
+<div class="flex items-center justify-between pb-2 mb-1">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1.5 font-label-sm text-label-sm">
+<span class="w-3 h-1 rounded bg-secondary"></span>
+<span class="text-on-surface">GPU Core Load (%)</span>
+</div>
+<div class="flex items-center gap-1.5 font-label-sm text-label-sm">
+<span class="w-3 h-1 rounded bg-emerald-400"></span>
+<span class="text-on-surface">VRAM Utilization (GB)</span>
+</div>
+<div class="flex items-center gap-1.5 font-label-sm text-label-sm"><span class="w-3 h-1 rounded bg-amber-400"></span><span class="text-on-surface">Temp GPU (°C)</span></div></div>
+<div class="font-label-sm text-label-sm text-outline font-mono">
+              Inference Tick: <span class="text-secondary">42 tok/s</span> | Tensor Util: <span class="text-on-surface">71%</span>
+</div>
+</div>
+<!-- Dynamic SVG Wave Canvas -->
+<div class="w-full h-32 relative bg-surface-container-lowest rounded border border-outline-variant/20 overflow-hidden">
+<div class="absolute inset-0 grid grid-rows-3 grid-cols-6 pointer-events-none opacity-20 border border-outline-variant/30">
+<div class="border-b border-r border-dashed border-outline"></div>
+<div class="border-b border-r border-dashed border-outline"></div>
+<div class="border-b border-r border-dashed border-outline"></div>
+<div class="border-b border-r border-dashed border-outline"></div>
+<div class="border-b border-r border-dashed border-outline"></div>
+<div class="border-b border-dashed border-outline"></div>
+<div class="border-b border-r border-dashed border-outline"></div>
+<div class="border-b border-r border-dashed border-outline"></div>
+<div class="border-b border-r border-dashed border-outline"></div>
+<div class="border-b border-r border-dashed border-outline"></div>
+<div class="border-b border-r border-dashed border-outline"></div>
+<div class="border-b border-dashed border-outline"></div>
+</div>
+<svg class="w-full h-full" id="svg-gpu" preserveAspectRatio="none" viewBox="0 0 600 120">
+<defs>
+<linearGradient id="grad-gpu-fill" x1="0%" x2="0%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#cebdff" stop-opacity="0.32"></stop>
+<stop offset="100%" stop-color="#cebdff" stop-opacity="0.0"></stop>
+</linearGradient>
+</defs>
+<!-- Filled area -->
+<path d="M 0 60 Q 60 70, 120 50 T 240 40 T 360 55 T 480 35 T 600 48 L 600 120 L 0 120 Z" fill="url(#grad-gpu-fill)" id="path-gpu-area"></path>
+<!-- Primary Line GPU Load -->
+<path d="M 0 60 Q 60 70, 120 50 T 240 40 T 360 55 T 480 35 T 600 48" fill="none" id="path-gpu-line" stroke="#cebdff" stroke-linecap="round" stroke-width="2"></path>
+<!-- Secondary Line VRAM -->
+<path d="M 0 52 Q 60 51, 120 53 T 240 50 T 360 48 T 480 49 T 600 50" fill="none" id="path-gpu-vram" stroke="#34d399" stroke-width="1.8"></path>
+<path d="M 0 58 Q 60 56, 120 59 T 240 55 T 360 57 T 480 54 T 600 56" fill="none" id="path-gpu-temp" stroke="#fbbf24" stroke-dasharray="3 3" stroke-width="1.4"></path></svg>
+</div>
+<div class="flex justify-between items-center pt-2 font-label-sm text-label-sm text-outline">
+<span class="">-60 seg</span>
+<span class="">-45 seg</span>
+<span class="">-30 seg</span>
+<span class="">-15 seg</span>
+<span class="text-secondary font-mono font-semibold">Live (0s)</span>
+</div>
+</div>
+</div>
+</article>
+<!-- ROW 3: STORAGE & NVMe I/O (SAMSUNG 990 PRO 2TB) -->
+<article class="p-4 rounded-xl bg-surface-container-lowest/90 border border-outline-variant/30 hover:border-primary/40 transition-all duration-200">
+<div class="flex flex-col lg:flex-row gap-space-md items-stretch">
+<!-- Left Metrics Block -->
+<div class="w-full lg:w-72 flex-shrink-0 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-outline-variant/30 pb-3 lg:pb-0 lg:pr-4">
+<div>
+<div class="flex items-center justify-between mb-1">
+<span class="font-label-md text-label-md font-semibold text-primary uppercase tracking-wider flex items-center gap-1.5">
+<span class="material-symbols-outlined text-base text-primary">hard_drive</span>
+                NVMe // RAID0 EXT4
+              </span>
+<span class="font-label-sm text-label-sm text-tertiary px-1.5 py-0.5 rounded bg-surface-container-high border border-outline-variant/30">70% USED</span>
+</div>
+<p class="font-body-sm text-body-sm text-outline mb-3">1.4 TB / 2.0 TB NVMe PCIe Gen4</p>
+<div class="grid grid-cols-2 gap-2 mb-2">
+<div class="p-2.5 rounded bg-surface-container-low border border-outline-variant/20">
+<span class="font-label-sm text-label-sm text-outline block">READ SPEED</span>
+<span class="font-headline-md text-headline-md font-bold text-cyan-300 font-mono" id="nvme-read-val">150<span class="text-xs text-outline font-normal"> MB/s</span></span>
+</div>
+<div class="p-2.5 rounded bg-surface-container-low border border-outline-variant/20">
+<span class="font-label-sm text-label-sm text-outline block">WRITE SPEED</span>
+<span class="font-headline-md text-headline-md font-bold text-primary font-mono" id="nvme-write-val">42<span class="text-xs text-outline font-normal"> MB/s</span></span>
+</div>
+</div>
+</div>
+<div class="space-y-1.5 pt-2 text-on-surface-variant font-label-sm text-label-sm">
+<div class="flex justify-between items-center">
+<span class="text-outline">Current IOPS:</span>
+<span class="font-mono text-on-surface">1,842 IOPS</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-outline">Queue Depth:</span>
+<span class="font-mono text-tertiary">4 / 64 avg</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-outline">SMART Health:</span>
+<span class="font-mono text-emerald-400">100% (38°C)</span>
+</div>
+</div>
+</div>
+<!-- Center/Right Continuous Chart -->
+<div class="flex-1 flex flex-col justify-between min-w-0">
+<div class="flex items-center justify-between pb-2 mb-1">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1.5 font-label-sm text-label-sm">
+<span class="w-3 h-1 rounded bg-cyan-400"></span>
+<span class="text-on-surface">Read (MB/s)</span>
+</div>
+<div class="flex items-center gap-1.5 font-label-sm text-label-sm">
+<span class="w-3 h-1 rounded bg-primary"></span>
+<span class="text-on-surface">Write (MB/s)</span>
+</div>
+</div>
+<div class="font-label-sm text-label-sm text-outline font-mono">
+              Peak Read: <span class="text-cyan-300">410 MB/s</span> | Peak Write: <span class="text-primary">124 MB/s</span>
+</div>
+</div>
+<!-- Dynamic SVG Wave Canvas -->
+<div class="w-full h-32 relative bg-surface-container-lowest rounded border border-outline-variant/20 overflow-hidden">
+<div class="absolute inset-0 grid grid-rows-3 grid-cols-6 pointer-events-none opacity-20 border border-outline-variant/30">
+<div class="border-b border-r border-dashed border-outline"></div>
+<div class="border-b border-r border-dashed border-outline"></div>
+<div class="border-b border-r border-dashed border-outline"></div>
+<div class="border-b border-r border-dashed border-outline"></div>
+<div class="border-b border-r border-dashed border-outline"></div>
+<div class="border-b border-dashed border-outline"></div>
+<div class="border-b border-r border-dashed border-outline"></div>
+<div class="border-b border-r border-dashed border-outline"></div>
+<div class="border-b border-r border-dashed border-outline"></div>
+<div class="border-b border-r border-dashed border-outline"></div>
+<div class="border-b border-r border-dashed border-outline"></div>
+<div class="border-b border-dashed border-outline"></div>
+</div>
+<svg class="w-full h-full" id="svg-io" preserveAspectRatio="none" viewBox="0 0 600 120">
+<defs>
+<linearGradient id="grad-io-read" x1="0%" x2="0%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#22d3ee" stop-opacity="0.25"></stop>
+<stop offset="100%" stop-color="#22d3ee" stop-opacity="0.0"></stop>
+</linearGradient>
+</defs>
+<path d="M 0 90 Q 50 40, 100 85 T 200 45 T 300 95 T 400 30 T 500 70 T 600 50 L 600 120 L 0 120 Z" fill="url(#grad-io-read)" id="path-nvme-read-area"></path>
+<path d="M 0 90 Q 50 40, 100 85 T 200 45 T 300 95 T 400 30 T 500 70 T 600 50" fill="none" id="path-nvme-read" stroke="#22d3ee" stroke-width="1.8"></path>
+<path d="M 0 100 Q 50 95, 100 90 T 200 85 T 300 70 T 400 90 T 500 85 T 600 88" fill="none" id="path-nvme-write" stroke="#a078ff" stroke-dasharray="4 2" stroke-width="1.8"></path>
+</svg>
+</div>
+<div class="flex justify-between items-center pt-2 font-label-sm text-label-sm text-outline">
+<span class="">-60 seg</span>
+<span class="">-45 seg</span>
+<span class="">-30 seg</span>
+<span class="">-15 seg</span>
+<span class="text-cyan-400 font-mono font-semibold">Live (0s)</span>
+</div>
+</div>
+</div>
+</article>
+<!-- SECTION 4: DOCKER CONTAINERS LIVE TRACE -->
+<section class="rounded-xl bg-surface-container-lowest/90 border border-outline-variant/30 overflow-hidden shadow-sm">
+<!-- Section Header -->
+<div class="p-4 border-b border-outline-variant/30 flex flex-wrap items-center justify-between gap-space-sm bg-surface-container-low/40">
+<div class="flex items-center gap-2.5">
+<span class="material-symbols-outlined text-primary text-xl">dataset</span>
+<div>
+<h2 class="font-headline-md text-headline-md font-semibold text-on-surface">DOCKER ECOSYSTEM LIVE TRACE</h2>
+<p class="font-body-sm text-body-sm text-outline">5 Containers Operacionais em execução contínua</p>
+</div>
+</div>
+<!-- Aggregate Metrics Badges -->
+<div class="flex flex-wrap items-center gap-2 font-label-sm text-label-sm">
+<div class="px-2.5 py-1 rounded bg-surface-container border border-outline-variant/30 flex items-center gap-1.5">
+<span class="text-outline">CPU Total:</span>
+<span class="font-mono text-primary font-semibold">16.8%</span>
+</div>
+<div class="px-2.5 py-1 rounded bg-surface-container border border-outline-variant/30 flex items-center gap-1.5">
+<span class="text-outline">RAM Alocada:</span>
+<span class="font-mono text-secondary font-semibold">6.23 GB</span>
+</div>
+<div class="px-2.5 py-1 rounded bg-surface-container border border-outline-variant/30 flex items-center gap-1.5">
+<span class="text-outline">Net Agg:</span>
+<span class="font-mono text-emerald-400 font-semibold">7.8 MB/s</span>
+</div>
+</div>
+</div>
+<!-- Container Rows List -->
+<div class="divide-y divide-outline-variant/20 font-body-sm text-body-sm">
+<!-- Row 1: hermes-agent-core -->
+<div class="p-3.5 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 hover:bg-surface-container-high/20 transition-colors">
+<div class="flex items-center gap-3 w-full md:w-56">
+<span class="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0 animate-pulse"></span>
+<div>
+<span class="font-code-md text-code-md font-semibold text-on-surface block">hermes-agent-core</span>
+<span class="font-label-sm text-label-sm text-outline">orchestration • node 0</span>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-4 w-full md:w-72 font-mono text-xs">
+<div>
+<span class="text-outline text-label-sm block">CPU</span>
+<span class="text-primary font-medium">8.4%</span>
+</div>
+<div>
+<span class="text-outline text-label-sm block">RAM</span>
+<span class="text-on-surface font-medium">3.4 GB</span>
+</div>
+<div>
+<span class="text-outline text-label-sm block">NET I/O</span>
+<span class="text-emerald-400 font-medium">4.2 MB/s</span>
+</div>
+</div>
+<!-- Mini Sparkline Live -->
+<div class="w-full md:w-48 h-8 flex items-center">
+<svg class="w-full h-7" preserveAspectRatio="none" viewBox="0 0 160 30">
+<path d="M 0 20 Q 20 10, 40 18 T 80 8 T 120 15 T 160 11" fill="none" stroke="#a078ff" stroke-width="1.8"></path>
+<path d="M 0 25 Q 30 22, 60 20 T 110 18 T 160 17" fill="none" stroke="#cebdff" stroke-dasharray="2 2" stroke-width="1"></path>
+</svg>
+</div>
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded font-label-sm text-label-sm bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">HEALTHY</span>
+<button class="p-1 hover:text-primary text-outline" title="Ver logs">
+<span class="material-symbols-outlined text-base">receipt_long</span>
+</button>
+</div>
+</div>
+<!-- Row 2: websidian-db -->
+<div class="p-3.5 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 hover:bg-surface-container-high/20 transition-colors">
+<div class="flex items-center gap-3 w-full md:w-56">
+<span class="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0"></span>
+<div>
+<span class="font-code-md text-code-md font-semibold text-on-surface block">websidian-db</span>
+<span class="font-label-sm text-label-sm text-outline">postgres:16-alpine</span>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-4 w-full md:w-72 font-mono text-xs">
+<div>
+<span class="text-outline text-label-sm block">CPU</span>
+<span class="text-on-surface font-medium">4.2%</span>
+</div>
+<div>
+<span class="text-outline text-label-sm block">RAM</span>
+<span class="text-on-surface font-medium">2.1 GB</span>
+</div>
+<div>
+<span class="text-outline text-label-sm block">QUERIES</span>
+<span class="text-amber-300 font-medium">340 q/s</span>
+</div>
+</div>
+<!-- Mini Sparkline Live -->
+<div class="w-full md:w-48 h-8 flex items-center">
+<svg class="w-full h-7" preserveAspectRatio="none" viewBox="0 0 160 30">
+<path d="M 0 18 Q 30 24, 60 14 T 100 20 T 130 9 T 160 15" fill="none" stroke="#fbbf24" stroke-width="1.8"></path>
+</svg>
+</div>
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded font-label-sm text-label-sm bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">HEALTHY</span>
+<button class="p-1 hover:text-primary text-outline" title="Ver logs">
+<span class="material-symbols-outlined text-base">receipt_long</span>
+</button>
+</div>
+</div>
+<!-- Row 3: beszel-agent -->
+<div class="p-3.5 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 hover:bg-surface-container-high/20 transition-colors bg-surface-container-high/10">
+<div class="flex items-center gap-3 w-full md:w-56">
+<span class="w-2 h-2 rounded-full bg-primary flex-shrink-0 animate-ping"></span>
+<div>
+<span class="font-code-md text-code-md font-semibold text-primary block">beszel-agent</span>
+<span class="font-label-sm text-label-sm text-primary-fixed-dim">telemetry probe v0.9.1</span>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-4 w-full md:w-72 font-mono text-xs">
+<div>
+<span class="text-outline text-label-sm block">CPU</span>
+<span class="text-primary font-medium">0.8%</span>
+</div>
+<div>
+<span class="text-outline text-label-sm block">RAM</span>
+<span class="text-on-surface font-medium">48 MB</span>
+</div>
+<div>
+<span class="text-outline text-label-sm block">BUFFER</span>
+<span class="text-emerald-400 font-medium">sync OK</span>
+</div>
+</div>
+<!-- Mini Sparkline Live -->
+<div class="w-full md:w-48 h-8 flex items-center">
+<svg class="w-full h-7" preserveAspectRatio="none" viewBox="0 0 160 30">
+<path d="M 0 22 Q 40 24, 80 20 T 120 23 T 160 21" fill="none" stroke="#d0bcff" stroke-width="1.6"></path>
+</svg>
+</div>
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded font-label-sm text-label-sm bg-primary/20 text-primary border border-primary/40 font-mono">1s TICK</span>
+<button class="p-1 hover:text-primary text-outline" title="Ver logs">
+<span class="material-symbols-outlined text-base">receipt_long</span>
+</button>
+</div>
+</div>
+<!-- Row 4: redis-cache -->
+<div class="p-3.5 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 hover:bg-surface-container-high/20 transition-colors">
+<div class="flex items-center gap-3 w-full md:w-56">
+<span class="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0"></span>
+<div>
+<span class="font-code-md text-code-md font-semibold text-on-surface block">redis-cache</span>
+<span class="font-label-sm text-label-sm text-outline">key-value store</span>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-4 w-full md:w-72 font-mono text-xs">
+<div>
+<span class="text-outline text-label-sm block">CPU</span>
+<span class="text-on-surface font-medium">1.1%</span>
+</div>
+<div>
+<span class="text-outline text-label-sm block">RAM</span>
+<span class="text-on-surface font-medium">512 MB</span>
+</div>
+<div>
+<span class="text-outline text-label-sm block">HIT RATE</span>
+<span class="text-emerald-400 font-medium">99.4%</span>
+</div>
+</div>
+<!-- Mini Sparkline Live -->
+<div class="w-full md:w-48 h-8 flex items-center">
+<svg class="w-full h-7" preserveAspectRatio="none" viewBox="0 0 160 30">
+<path d="M 0 15 Q 35 12, 70 17 T 115 14 T 160 16" fill="none" stroke="#34d399" stroke-width="1.8"></path>
+</svg>
+</div>
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded font-label-sm text-label-sm bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">HEALTHY</span>
+<button class="p-1 hover:text-primary text-outline" title="Ver logs">
+<span class="material-symbols-outlined text-base">receipt_long</span>
+</button>
+</div>
+</div>
+<!-- Row 5: nginx-gateway -->
+<div class="p-3.5 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 hover:bg-surface-container-high/20 transition-colors">
+<div class="flex items-center gap-3 w-full md:w-56">
+<span class="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0"></span>
+<div>
+<span class="font-code-md text-code-md font-semibold text-on-surface block">nginx-gateway</span>
+<span class="font-label-sm text-label-sm text-outline">reverse-proxy ssl</span>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-4 w-full md:w-72 font-mono text-xs">
+<div>
+<span class="text-outline text-label-sm block">CPU</span>
+<span class="text-on-surface font-medium">2.3%</span>
+</div>
+<div>
+<span class="text-outline text-label-sm block">RAM</span>
+<span class="text-on-surface font-medium">180 MB</span>
+</div>
+<div>
+<span class="text-outline text-label-sm block">TRAFFIC</span>
+<span class="text-cyan-300 font-medium">842 req/s</span>
+</div>
+</div>
+<!-- Mini Sparkline Live -->
+<div class="w-full md:w-48 h-8 flex items-center">
+<svg class="w-full h-7" preserveAspectRatio="none" viewBox="0 0 160 30">
+<path d="M 0 25 Q 25 15, 60 18 T 100 8 T 135 12 T 160 6" fill="none" stroke="#22d3ee" stroke-width="1.8"></path>
+</svg>
+</div>
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded font-label-sm text-label-sm bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">HEALTHY</span>
+<button class="p-1 hover:text-primary text-outline" title="Ver logs">
+<span class="material-symbols-outlined text-base">receipt_long</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BOTTOM NAV BAR (Shared Component Anchor - Active on Telemetry) -->
+<nav class="md:hidden fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around px-margin-md py-space-xs w-full bg-surface-container-lowest/90 backdrop-blur-md border-t border-outline-variant/30 shadow-lg shadow-surface-container-lowest">
+<!-- Item 1: Terminal (Inactive) -->
+<a class="flex flex-col items-center justify-center text-outline font-label-sm py-1 hover:text-on-surface-variant transition-colors duration-150" href="#">
+<span class="material-symbols-outlined text-xl">terminal</span>
+<span class="text-label-sm font-label-sm">Terminal</span>
+</a>
+<!-- Item 2: Telemetry (Active Target) -->
+<a class="flex flex-col items-center justify-center text-primary font-label-sm py-1 border-t-2 border-primary transition-colors duration-150" href="#">
+<span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1;">query_stats</span>
+<span class="text-label-sm font-label-sm font-semibold">Telemetry</span>
+</a>
+<!-- Item 3: Audio (Inactive) -->
+<a class="flex flex-col items-center justify-center text-outline font-label-sm py-1 hover:text-on-surface-variant transition-colors duration-150" href="#">
+<span class="material-symbols-outlined text-xl">mic</span>
+<span class="text-label-sm font-label-sm">Audio</span>
+</a>
+<!-- Item 4: Config (Inactive) -->
+<a class="flex flex-col items-center justify-center text-outline font-label-sm py-1 hover:text-on-surface-variant transition-colors duration-150" href="#">
+<span class="material-symbols-outlined text-xl">tune</span>
+<span class="text-label-sm font-label-sm">Config</span>
+</a>
+</nav>
+<!-- Realtime Ticker Simulation Script -->
+<script>
+    (function initLiveTelemetryTicker() {
+      let isStreaming = true;
+      const toggleBtn = document.getElementById('stream-toggle');
+      const toggleTxt = document.getElementById('stream-text');
+      const cpuMetric = document.getElementById('cpu-metric-val');
+      const cpuTemp = document.getElementById('cpu-temp-val');
+      const gpuMetric = document.getElementById('gpu-load-val');
+      const readMetric = document.getElementById('nvme-read-val');
+      const latencyVal = document.getElementById('latency-val');
+      
+      const pathCpuArea = document.getElementById('path-cpu-area');
+      const pathCpuLine = document.getElementById('path-cpu-line');
+
+      if (toggleBtn) {
+        toggleBtn.addEventListener('click', () => {
+          isStreaming = !isStreaming;
+          toggleTxt.innerText = isStreaming ? 'Pausar' : 'Retomar';
+          toggleBtn.classList.toggle('text-amber-300', !isStreaming);
+        });
+      }
+
+      // Generate soft waves for the SVG graph ticker
+      let tickCount = 0;
+      setInterval(() => {
+        if (!isStreaming) return;
+        tickCount++;
+
+        // Random subtle jitter
+        const cpuJitter = (33 + Math.random() * 5).toFixed(1);
+        const tempJitter = Math.floor(54 + Math.random() * 3);
+        const gpuJitter = (57 + Math.random() * 6).toFixed(1);
+        const readJitter = Math.floor(135 + Math.random() * 26);
+        const latJitter = (3.8 + Math.random() * 0.9).toFixed(1);
+
+        if (cpuMetric) cpuMetric.innerHTML = `${cpuJitter}<span class="text-sm text-primary font-normal">%</span>`;
+        if (cpuTemp) cpuTemp.innerHTML = `${tempJitter}<span class="text-sm text-outline font-normal">°C</span>`;
+        if (gpuMetric) gpuMetric.innerHTML = `${gpuJitter}<span class="text-sm text-secondary font-normal">%</span>`;
+        if (readMetric) readMetric.innerHTML = `${readJitter}<span class="text-xs text-outline font-normal"> MB/s</span>`;
+        if (latencyVal) latencyVal.innerText = `${latJitter}ms`;
+
+        // Dynamic wave coordinate oscillation
+        if (pathCpuArea && pathCpuLine) {
+          const y1 = 70 + Math.sin(tickCount) * 12;
+          const y2 = 55 + Math.cos(tickCount * 0.8) * 15;
+          const y3 = 60 + Math.sin(tickCount * 1.2) * 14;
+          const y4 = 48 + Math.cos(tickCount) * 10;
+          
+          const lineD = `M 0 80 Q 70 ${y1}, 140 ${y2} T 280 ${y3} T 420 ${y4} T 540 ${y1} T 600 ${y2}`;
+          const areaD = `${lineD} L 600 120 L 0 120 Z`;
+          
+          pathCpuLine.setAttribute('d', lineD);
+          pathCpuArea.setAttribute('d', areaD);
+        }
+      }, 1000);
+    })();
+  </script>
+
+
+</body></html>

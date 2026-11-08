@@ -1,4 +1,4 @@
-- [ ] Criar aba Hermes no Websidian 📅 2026-10-02 ✅ 2026-10-02
+- [ ] Criar aba Hermes no Websidian  📅 2026-11-06
 - [x] US01-T01 - Design da página (frontend) 📅 2026-10-01 ✅ 2026-10-01
     - [x] Esboçar wireframe simples da página de terminal (área  para saída, campo de entrada ou botão de envio, espaço para áudio) 
     - [x] Definir paleta de cores e tipografia seguindo as referências de design do Websidian 
@@ -21,15 +21,8 @@
 - [x] US01-T03 - Implementação do backend 📅 2026-10-02 ✅ 2026-10-02
 - [x] US01-T04 - Teste de backend no Swagger (ou equivalente) 📅 2026-10-02 ✅ 2026-10-02
 - [x] US01-T05 - Criação da spec do frontend 📅 2026-10-02 ✅ 2026-10-02
-    - [ ] Definir contrato de comunicação:
-        GET /terminal/poll?since=<ts> → {since, html:string, audio:[{url,text}]}
-        POST /terminal/input → {data: string}
-    - [ ] Especificar comportamento de polling (intervalo ≈ 1s, tratamento de 404/500, backoff exponencial opcional)
-    - [ ] Descrever como inserir o html retornado no container (ex.: terminalDiv.insertAdjacentHTML('beforeend', resp.html)) e rolar para baixo
-    - [ ] Descrição de como renderizar cada item de audio (ex.: criar <audio src=\"url\" controls autoplay> e inseri‑lo imediatamente após o trecho de HTML correspondente ou colocar em uma fila de reprodução)
-    - [ ] Listar requisitos de compatibilidade (Android 4 WebKit, somente XMLHttpRequest, sem WebSocket/EventSource)
 - [x] US01-T06 - Implementação do frontend 📅 2026-10-02 ✅ 2026-10-02
-- [ ] US02 - Melhoria de robustes
+- [x] US02 - Melhoria de robustes ✅ 2026-10-16
     - [x] US02-T01 - Criar especificação do refactor 📅 2026-10-14 ✅ 2026-10-16
     - [x] US02-T02 - Aplicar especificação do refactor (critérios de aceite) 📅 2026-10-14 ✅ 2026-10-16
     - [x] US02-T03 - Criar especificação de melhoria com ID e estrutura de dados 📅 2026-10-15 ✅ 2026-10-16
@@ -45,29 +38,14 @@
     - [ ] US03-T04 - Adicionar texto selecionável 📅 2026-11-05
     - [ ] US03-T05 - Fixar Debugger no topo direito do chat container e mudar o icone 📅 2026-11-05
     - [ ] US03-T06 - Implementar seletor de sessions para exclusão 📅 2026-11-05
-    - [ ] Criar página HTML mínima com:
-        <div id=\"terminal\" style=\"white-space:pre-wrap; font-family:monospace;\"></div>
-        <input id=\"cmd\" type=\"text\" placeholder=\"Digite o comando…\"> + botão Enviar (ou captura de Enter)
-    - [ ] Implementar função poll() usando XMLHttpRequest que:
-        Lê since armazenado em variável global ou localStorage
-        Faz GET ao endpoint /terminal/poll
-        Atualiza since com o valor retornado
-        Insere resp.html no <div id=\"terminal\"> via insertAdjacentHTML('beforeend', resp.html)
-        Rolagem automática para o bottom (terminal.scrollTop = terminal.scrollHeight)
-        Para cada objeto em resp.audio, cria elemento <audio src=\"url\" controls autoplay> e o anexa após o último caractere inserido (ou adiciona a uma fila de reprodução)
-    - [ ] Implementar envio de comando: ao clicar em Enviar ou pressionar Enter, fazer POST a /terminal/input com {data: texto + \"\\\\n\"}
-    - [ ] Adicionar tratamento de erros de rede (tentar novamente após 2s, exibir mensagem de aviso)
-    - [ ] Testar a página em um emulador ou dispositivo Android 4 (ou navegador que simule aquele nível de suporte)
-    - [ ] Verificar que o texto aparece com as mesmas cores/estilos do Hermes CLI e que o áudio é reproduzido automaticamente
-    - [ ] Verificar que não há vazamento de memória (limpar elementos de áudio muito antigos se necessario)
-
+    - [ ] 
 - [ ] US04 - Integração de profiles e providers
     - [ ] US04-T01 - Integrar profile alfred com hermes dockerizado
     - [ ] US04-T02 - Permitir alteração nos arquivos do profile de forma dinamica e versionada
     - [ ] US04-T03 - Implementar seleção de profile no front
     - [ ] US04-T04 - Implementar seleção de provider/model no front e backend
 
-- [ ] US05 - Websidian MCP
+- [x] US05 - Websidian MCP ✅ 2026-11-05
     - [x] US05-T01 - Descrever endpoints (action based) com base na API ✅ 2026-11-04
         Precisamos criar um MCP para utilizar as funcionalidades presentes na API do websidian no nosso Hermes ou qualquer outro harness de IA, principalmente para gestão de contexto e evitar a necessidade de execução de codigo para buscas de tasks.
 
@@ -168,4 +146,26 @@
         Done: ✅ YYYY-MM-DD
 
         
-- [ ] US06 - Hermes button na page schedule
+- [ ] US06 - Monitor de servidor ⏳ 2026-11-07
+    - [x] US06-T01 - Criar o design base no stitch ⏳ 2026-11-07 ✅ 2026-11-07
+        Design simples e bonitinho com dados de CPU: uso e temperatura, GPU: Uso, vram e temperatura, Disco: leitura e uso, Docker: cpu, ram disco e network
+    - [ ] US06-T02 - Criar spec Server monitor ⏳ 2026-11-07
+        Frontend deve ser html e css puro compativel com Android 4, consumir dados do beszel dockerizado do servidor através de polling para atualizar os graficos do dashboard 
+        /opsx-propose create-server-monitor-page
+        Precisamos criar uma pagina para monitorar os dados do nosso servidor
+        # Design
+        Para criação do frontend e design use as referencias de design criadas pelo google stitch em @docs\design-reference\monitor-page, voce deve criar uma copia fiel do design de referencia em public\server-monitor.html (css e js), compativel com navegadores antigos e Android 4, utilizando o MCP Playwright para abrir a pagina e comparar visualmente a pagina com o @docs\design-reference\monitor-page\screen.png.
+
+        # Funcionalidade
+        A pagina consumirá a API Beszel hospedada no meu servidor que expõe os dados necessários, utilize o MCP Context7 para pesquisar os endpoints e formatos de dados para as requisições.
+
+        O monitor deve fazer polling dos dados a cada 1 segundo.
+
+
+
+    - [ ] US06-T03 - Implementar spec do Server monitor ⏳ 2026-11-07
+        Implementar o server monitor conforme a spec criada 
+    - [ ] US06-T04 - Analise de critérios de aceite e correção de bugs ⏳ 2026-11-07
+        Analise de critérios de aceite e correção de bugs do server monitor 
+- [ ] US06 - Hermes button na page schedule ⏳ 2026-11-07
+
