@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Homelab Live Monitor</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com" rel="preconnect">
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="server-monitor.css">
+</head>
+
+<body class="dark">
+    <!-- FLOATING BACK BUTTON -->
+    <a href="/" class="back-btn-float" title="Voltar">
+        <span class="material-symbols-outlined">arrow_back</span>
+    </a>
+
+    <!-- MAIN VIEWPORT -->
+    <main class="main">
+
+        <!-- ROW 1: CPU -->
+        <article class="metric-row" id="cpuRow">
+            <div class="row-left">
+                <div class="row-header">
+                    <div class="row-title-block">
+                        <span class="row-icon cpu-icon material-symbols-outlined">memory</span>
+                        <span class="row-title">CPU</span>
+                    </div>
+                </div>
+                <div class="row-metrics-grid">
+                    <div class="metric-box">
+                        <span class="metric-label">USO ATUAL</span>
+                        <span class="metric-value" id="cpuMetricVal">37.7<span class="metric-unit">%</span></span>
+                    </div>
+                    <div class="metric-box">
+                        <span class="metric-label">TEMPERATURA</span>
+                        <span class="metric-value temp" id="cpuTempVal">56<span
+                                class="metric-unit">\u00B0C</span></span>
+                    </div>
+                </div>
+                <div class="row-details">
+                    <div class="detail-row"><span class="detail-label">Núcleos:</span><span class="detail-value primary"
+                            id="cpuCoresVal">--</span></div>
+                </div>
+            </div>
+            <div class="row-right">
+                <div class="chart-header">
+                    <div class="chart-legend">
+                        <div class="legend-item"><span class="legend-color cpu-color"></span><span
+                                class="legend-text">Uso CPU (%)</span></div>
+                        <div class="legend-item"><span class="legend-color temp-color"></span><span
+                                class="legend-text">Temp Core</span></div>
+                    </div>
+                    <div class="chart-stats">Pico 60s: <span class="stat-value">48.9%</span> | Média: <span
+                            class="stat-value">33.1%</span></div>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-grid"></div>
+                    <svg class="chart-svg" id="svgCpu" preserveAspectRatio="none" viewBox="0 0 600 120">
+                        <defs>
+                            <linearGradient id="gradCpuFill" x1="0%" x2="0%" y1="0%" y2="100%">
+                                <stop offset="0%" stop-color="#a078ff" stop-opacity="0.38"></stop>
+                                <stop offset="100%" stop-color="#a078ff" stop-opacity="0.0"></stop>
+                            </linearGradient>
+                        </defs>
+                        <path class="chart-area" id="pathCpuArea" fill="url(#gradCpuFill)"></path>
+                        <path class="chart-line" id="pathCpuLine" stroke="#d0bcff" stroke-linecap="round"
+                            stroke-width="2" fill="none"></path>
+                        <path class="chart-line-temp" id="pathCpuTemp" stroke="#fbbf24" stroke-dasharray="3 3"
+                            stroke-width="1.2" fill="none"></path>
+                    </svg>
+                </div>
+                <div class="chart-time">
+                    <span>-60s</span><span>-45s</span><span>-30s</span><span>-15s</span><span class="live-time">Live
+                        (0s)</span>
+                </div>
+            </div>
+        </article>
+
+        <!-- ROW 2: MEMORY (RAM) -->
+        <article class="metric-row" id="memRow">
+            <div class="row-left">
+                <div class="row-header">
+                    <div class="row-title-block">
+                        <span class="row-icon mem-icon material-symbols-outlined">memory</span>
+                        <span class="row-title">MEMÓRIA // DDR4</span>
+                    </div>
+
+                </div>
+                <p class="row-subtitle"><span id="memSubtitle">Carregando...</span></p>
+                <div class="row-metrics-grid">
+                    <div class="metric-box">
+                        <span class="metric-label">USADO</span>
+                        <span class="metric-value" id="memUsageVal"><span class="metric-unit">GB</span></span>
+                    </div>
+                    <div class="metric-box">
+                        <span class="metric-label">TOTAL</span>
+                        <span class="metric-value" id="memAvailVal"><span class="metric-unit">GB</span></span>
+                    </div>
+                </div>
+                <div class="row-details">
+                    <div class="detail-row"><span class="detail-label">Usado:</span><span class="detail-value primary"
+                            id="memUsedVal">-- GB</span></div>
+                    <div class="detail-row"><span class="detail-label">Buffer/Cache:</span><span
+                            class="detail-value">7.2 GB</span></div>
+                    <div class="detail-row"><span class="detail-label">Swap:</span><span class="detail-value"
+                            id="memSwapVal">-- GB / -- GB</span></div>
+                </div>
+            </div>
+            <div class="row-right">
+                <div class="chart-header">
+                    <div class="chart-legend">
+                        <div class="legend-item"><span class="legend-color mem-color"></span><span
+                                class="legend-text">Uso RAM (%)</span></div>
+                    </div>
+                    <div class="chart-stats">Pico 60s: <span class="stat-value">28.7%</span> | Média: <span
+                            class="stat-value">21.4%</span></div>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-grid"></div>
+                    <svg class="chart-svg" id="svgMem" preserveAspectRatio="none" viewBox="0 0 600 120">
+                        <defs>
+                            <linearGradient id="gradMemFill" x1="0%" x2="0%" y1="0%" y2="100%">
+                                <stop offset="0%" stop-color="#22c55e" stop-opacity="0.38"></stop>
+                                <stop offset="100%" stop-color="#22c55e" stop-opacity="0.0"></stop>
+                            </linearGradient>
+                        </defs>
+                        <path class="chart-area" id="pathMemArea" fill="url(#gradMemFill)"></path>
+                        <path class="chart-line" id="pathMemLine" stroke="#22c55e" stroke-linecap="round"
+                            stroke-width="2" fill="none"></path>
+                    </svg>
+                </div>
+                <div class="chart-time">
+                    <span>-60s</span><span>-45s</span><span>-30s</span><span>-15s</span><span
+                        class="live-time mem-time">Live (0s)</span>
+                </div>
+            </div>
+        </article>
+
+        <!-- ROW 3: GPU -->
+        <article class="metric-row" id="gpuRow">
+            <div class="row-left">
+                <div class="row-header">
+                    <div class="row-title-block">
+                        <span class="row-icon gpu-icon material-symbols-outlined">developer_board</span>
+                        <span class="row-title">GPU // <span id="gpuName">Carregando...</span></span>
+                    </div>
+                </div>
+                <p class="row-subtitle"><span id="gpuSubtitle">Carregando...</span></p>
+                <div class="row-metrics-grid gpu-grid">
+                    <div class="metric-box">
+                        <span class="metric-label">CORE LOAD</span>
+                        <span class="metric-value" id="gpuLoadVal">58.5<span class="metric-unit">%</span></span>
+                    </div>
+                    <div class="metric-box">
+                        <span class="metric-label">VRAM ALLOC</span>
+                        <span class="metric-value success" id="gpuVramVal">14.4<span
+                                class="metric-unit">/24G</span></span>
+                    </div>
+                    <div class="metric-box">
+                        <span class="metric-label">TEMPERATURA</span>
+                        <span class="metric-value temp" id="gpuTempVal">62<span
+                                class="metric-unit">\u00B0C</span></span>
+                    </div>
+                </div>
+
+            </div>
+            <div class="row-right">
+                <div class="chart-header">
+                    <div class="chart-legend">
+                        <div class="legend-item"><span class="legend-color gpu-color"></span><span
+                                class="legend-text">GPU Core Load (%)</span></div>
+                        <div class="legend-item"><span class="legend-color vram-color"></span><span
+                                class="legend-text">VRAM Utilization (GB)</span></div>
+                        <div class="legend-item"><span class="legend-color temp-color"></span><span
+                                class="legend-text">Temp GPU</span></div>
+                    </div>
+                    <div class="chart-stats">Inference Tick: <span class="stat-value secondary">42 tok/s</span> | Tensor
+                        Util: <span class="stat-value">71%</span></div>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-grid"></div>
+                    <svg class="chart-svg" id="svgGpu" preserveAspectRatio="none" viewBox="0 0 600 120">
+                        <defs>
+                            <linearGradient id="gradGpuFill" x1="0%" x2="0%" y1="0%" y2="100%">
+                                <stop offset="0%" stop-color="#cebdff" stop-opacity="0.32"></stop>
+                                <stop offset="100%" stop-color="#cebdff" stop-opacity="0.0"></stop>
+                            </linearGradient>
+                        </defs>
+                        <path class="chart-area" id="pathGpuArea" fill="url(#gradGpuFill)"></path>
+                        <path class="chart-line" id="pathGpuLine" stroke="#cebdff" stroke-linecap="round"
+                            stroke-width="2" fill="none"></path>
+                        <path class="chart-line-vram" id="pathGpuVram" stroke="#34d399" stroke-width="1.8" fill="none">
+                        </path>
+                        <path class="chart-line-temp" id="pathGpuTemp" stroke="#fbbf24" stroke-dasharray="3 3"
+                            stroke-width="1.4" fill="none"></path>
+                    </svg>
+                </div>
+                <div class="chart-time">
+                    <span>-60s</span><span>-45s</span><span>-30s</span><span>-15s</span><span
+                        class="live-time secondary">Live (0s)</span>
+                </div>
+            </div>
+        </article>
+
+        <!-- ROW 3: STORAGE / NVMe -->
+        <!-- ROW 4: STORAGE / HDD -->
+        <article class="metric-row" id="storageRow">
+            <div class="row-left">
+                <div class="row-header">
+                    <div class="row-title-block">
+                        <span class="row-icon hdd-icon material-symbols-outlined">hard_drive</span>
+                        <span class="row-title">STORAGE // <span id="diskName">Carregando...</span></span>
+                    </div>
+                    <span class="row-status status-used">83% USED</span>
+                </div>
+                <p class="row-subtitle"><span id="diskSubtitle">Carregando...</span></p>
+                <div class="disk-usage-ring">
+                    <svg class="disk-ring-svg" viewBox="0 0 150 150" width="150" height="150">
+                        <defs>
+                            <linearGradient id="gradDiskUsed" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#a078ff"></stop>
+                                <stop offset="100%" stop-color="#d0bcff"></stop>
+                            </linearGradient>
+                            <linearGradient id="gradDiskFree" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#1e293b"></stop>
+                                <stop offset="100%" stop-color="#0f172a"></stop>
+                            </linearGradient>
+                        </defs>
+                        <!-- Background track -->
+                        <circle class="disk-ring-track" cx="75" cy="75" r="58" stroke-width="18"></circle>
+                        <!-- Used portion -->
+                        <circle class="disk-ring-used" id="diskRingUsed" cx="75" cy="75" r="58" stroke-width="18"
+                            stroke-dasharray="364.42" stroke-dashoffset="364.42" stroke="url(#gradDiskUsed)"
+                            transform="rotate(-90 75 75)"></circle>
+                        <!-- Center text -->
+                        <text class="disk-ring-text-used" id="diskRingTextUsed" x="75" y="64" text-anchor="middle"
+                            font-family="JetBrains Mono, monospace" font-size="20" font-weight="700" fill="#a078ff">113
+                            GB</text>
+                        <text class="disk-ring-text-total" id="diskRingTextTotal" x="75" y="84" text-anchor="middle"
+                            font-family="JetBrains Mono, monospace" font-size="13" fill="#94a3b8">/ 143 GB</text>
+                        <text class="disk-ring-text-pct" id="diskRingTextPct" x="75" y="102" text-anchor="middle"
+                            font-family="JetBrains Mono, monospace" font-size="16" font-weight="600"
+                            fill="#a078ff">83.4%</text>
+                    </svg>
+                </div>
+            </div>
+            <div class="row-right">
+                <div class="chart-header">
+                    <div class="chart-legend">
+                        <div class="legend-item"><span class="legend-color disk-busy-color"></span><span
+                                class="legend-text">Disk Busy %</span></div>
+                    </div>
+                    <div class="chart-stats">Peak: <span class="stat-value disk" id="diskBusyPeak">0%</span> | Avg:
+                        <span class="stat-value disk" id="diskBusyAvg">0%</span>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-grid"></div>
+                    <svg class="chart-svg" id="svgStorage" preserveAspectRatio="none" viewBox="0 0 600 120">
+                        <defs>
+                            <linearGradient id="gradDiskBusy" x1="0%" x2="0%" y1="0%" y2="100%">
+                                <stop offset="0%" stop-color="#a078ff" stop-opacity="0.32"></stop>
+                                <stop offset="100%" stop-color="#a078ff" stop-opacity="0.0"></stop>
+                            </linearGradient>
+                        </defs>
+                        <path class="chart-area" id="pathDiskBusyArea" fill="url(#gradDiskBusy)"></path>
+                        <path class="chart-line" id="pathDiskBusyLine" stroke="#a078ff" stroke-linecap="round"
+                            stroke-width="2" fill="none"></path>
+                    </svg>
+                </div>
+                <div class="chart-time">
+                    <span>-60s</span><span>-45s</span><span>-30s</span><span>-15s</span><span
+                        class="live-time disk-time">Live (0s)</span>
+                </div>
+            </div>
+        </article>
+
+        <!-- SECTION 4: DOCKER CONTAINERS -->
+        <section class="docker-section">
+            <div class="docker-header">
+                <div class="docker-title-block">
+                    <span class="material-symbols-outlined docker-icon">dataset</span>
+                    <div>
+                        <h2 class="docker-title">DOCKER ECOSYSTEM LIVE TRACE</h2>
+                        <p class="docker-subtitle">Containers em execução</p>
+                    </div>
+                </div>
+            </div>
+            <div class="docker-table-container">
+                <table class="docker-table" id="dockerTable">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Sistema</th>
+                            <th>CPU</th>
+                            <th>Memória</th>
+                            <th>Rede</th>
+                            <th>Saúde</th>
+                            <th>Portas</th>
+                            <th>Imagem</th>
+                            <th>Estado</th>
+                            <th>Atualizado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dockerTableBody">
+                        <!-- Container rows injected by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <!-- BOTTOM NAV BAR (Mobile) -->
+    <nav class="bottom-nav">
+        <a href="#" class="nav-item-bottom"><span
+                class="material-symbols-outlined">terminal</span><span>Terminal</span></a>
+        <a href="#" class="nav-item-bottom active"><span class="material-symbols-outlined"
+                style="font-variation-settings: 'FILL' 1;">query_stats</span><span>Telemetry</span></a>
+        <a href="#" class="nav-item-bottom"><span class="material-symbols-outlined">mic</span><span>Audio</span></a>
+        <a href="#" class="nav-item-bottom"><span class="material-symbols-outlined">tune</span><span>Config</span></a>
+    </nav>
+
+    <script src="server-monitor.js"></script>
+</body>
+
+</html>
