@@ -32,6 +32,8 @@ export interface Config {
   presetsFile: string;
   port: number;
   mcpApiKey: string;
+  beszelApiKey: string;
+  beszelApiUrl: string;
 }
 
 function getEnv(key: string, defaultValue?: string): string {
@@ -89,6 +91,8 @@ export const config: Config = {
   presetsFile: getEnv("PRESETS_FILE", "/data/presets.json"),
   port: getEnvInt("PORT", 9091),
   mcpApiKey: getEnv("MCP_API_KEY", ""),
+  beszelApiKey: getEnv("BESZEL_API_KEY", ""),
+  beszelApiUrl: getEnv("BESZEL_API_URL", "http://10.0.0.219:8090").replace(/\/$/, ""),
 };
 
 export type { Config as ConfigType };

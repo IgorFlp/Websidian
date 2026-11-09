@@ -9,6 +9,8 @@ import profilesRoutes from "./profiles.js";
 import audioRoutes from "./audio.js";
 import terminalRoutes from "./terminal.js";
 import staticRoutes from "./static.js";
+import clientConfigRoutes from "./client-config.js";
+import beszelProxyRoutes from "./beszel-proxy.js";
 
 export async function registerRoutes(app: FastifyInstance): Promise<void> {
   await app.register(authRoutes);
@@ -20,6 +22,8 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
   await app.register(profilesRoutes);
   await app.register(audioRoutes);
   await app.register(terminalRoutes);
+  await app.register(clientConfigRoutes);
+  await app.register(beszelProxyRoutes);
   await app.register(staticRoutes);
 }
 
