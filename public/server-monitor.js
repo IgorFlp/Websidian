@@ -1,21 +1,22 @@
 // ============================================
 // HERMES // OS - Websidian Server Live Monitor
 // ES5 Compatible (Android 4+)
+// Uses proxy /api/beszel with super user token
 // ============================================
 
-// Configuração da API Beszel (carregada de /api/client-config)
+// Config
 var BESZEL_API_BASE = '/api/beszel'; // Proxy no servidor Websidian
-var BESZEL_API_TOKEN = ''; // Não precisa token - proxy injeta
+var SYSTEM_ID = '5m7vl0n83snar4n'; // igor-ubuntu
 
-// Estado da aplicação
-var currentSystemId = null;
+// State
 var pollingInterval = null;
 var chartInterval = null;
 var isStreaming = true;
 var tickCount = 0;
-var POLL_INTERVAL_MS = 1000;
+var POLL_INTERVAL_MS = 3000;
+var isPolling = false;
 
-// Histórico de dados para gráficos (últimos 60 pontos = 60s)
+// History for charts
 var maxHistoryPoints = 60;
 var cpuHistory = [];
 var cpuTempHistory = [];
@@ -28,9 +29,9 @@ var memUsageHistory = [];
 var diskUsageHistory = [];
 var diskBusyHistory = [];
 
-// Dados simulados para fallback (GPU, NVMe details, containers - não disponíveis na API básica)
+// Fallback data
 var fallbackData = {
-    gpu: { load: 0, vram: 0, vramTotal: 8, temp: 0 },  // 8GB VRAM for AMD RX 580
+    gpu: { load: 0, vram: 0, vramTotal: 8, temp: 0 },
     nvme: { read: 0, write: 0, iops: 0, queueDepth: 0, health: 100 },
     mem: { usage: 22.3, avail: 12.5, used: 3.5, total: 16, swapUsed: 0, swapTotal: 0 },
     containers: [
@@ -42,7 +43,7 @@ var fallbackData = {
     ]
 };
 
-// SVG Path templates for charts
+// SVG Path templates
 var chartPaths = {
     cpu: {
         area: 'M 0 80 Q 70 62, 140 68 T 280 71 T 420 40 T 540 62 T 600 68 L 600 120 L 0 120 Z',
@@ -62,14 +63,9 @@ var chartPaths = {
     }
 };
 
-// Utilitários
-function $(selector) {
-    return document.querySelector(selector);
-}
-
-function $$(selector) {
-    return document.querySelectorAll(selector);
-}
+// Utilities
+function $(selector) { return document.querySelector(selector); }
+function $$(selector) { return document.querySelectorAll(selector); }
 
 function formatNumber(num, decimals) {
     if (num === null || num === undefined) return '--';
@@ -86,7 +82,7 @@ function formatBytes(bytes) {
 }
 
 // ============================================
-// XMLHttpRequest Wrapper (ES5) - usa proxy /api/beszel
+// XMLHttpRequest Wrapper (ES5)
 // ============================================
 function xhrGet(url, callback, errorCallback) {
     var xhr = new XMLHttpRequest();
@@ -103,40 +99,8 @@ function xhrGet(url, callback, errorCallback) {
     };
     xhr.onerror = function() { if (errorCallback) errorCallback('Network error'); };
     xhr.ontimeout = function() { if (errorCallback) errorCallback('Timeout'); };
-    xhr.timeout = 5000;
+    xhr.timeout = 10000;
     xhr.send();
-}
-
-// XHR para API local (sem token Beszel)
-function localXhrGet(url, callback, errorCallback) {
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', url, true);
-    xhr.setRequestHeader('Accept', 'application/json');
-    xhr.onreadystatechange = function() {
-        if (xhr.readyState === 4) {
-            if (xhr.status >= 200 && xhr.status < 300) {
-                try { callback(JSON.parse(xhr.responseText)); } catch (e) { if (errorCallback) errorCallback('Parse error: ' + e.message); }
-            } else { if (errorCallback) errorCallback('HTTP ' + xhr.status); }
-        }
-    };
-    xhr.onerror = function() { if (errorCallback) errorCallback('Network error'); };
-    xhr.ontimeout = function() { if (errorCallback) errorCallback('Timeout'); };
-    xhr.timeout = 5000;
-    xhr.send();
-}
-
-// Buscar config do servidor local
-function fetchClientConfig(callback, errorCallback) {
-    localXhrGet('/api/client-config', function(data) {
-        console.log('fetchClientConfig response:', data);
-        if (data && data.beszelApiUrl && data.beszelApiKey) {
-            // Usar proxy local - não sobrescrever BESZEL_API_BASE
-            console.log('Config validated - using proxy at', BESZEL_API_BASE);
-            callback();
-        } else {
-            errorCallback('Config inválida: ' + JSON.stringify(data));
-        }
-    }, errorCallback);
 }
 
 // ============================================
@@ -144,20 +108,14 @@ function fetchClientConfig(callback, errorCallback) {
 // ============================================
 function fetchSystems(cb, eb) {
     var url = BESZEL_API_BASE + '/api/collections/systems/records?filter=(status="up")&perPage=1';
-    console.log('fetchSystems: calling xhrGet');
     xhrGet(url, function(data) {
-        console.log('fetchSystems success callback, data:', data);
+        console.log('fetchSystems success, data:', data);
         if (data.items && data.items.length > 0) {
-            console.log('fetchSystems: calling cb with system', data.items[0].id);
             cb(data.items[0]);
         } else {
-            console.log('fetchSystems: no items, calling eb');
             eb('No active systems');
         }
-    }, function(err) {
-        console.log('fetchSystems error callback:', err);
-        eb(err);
-    });
+    }, eb);
 }
 
 function fetchLatestStats(systemId, cb, eb) {
@@ -168,19 +126,27 @@ function fetchLatestStats(systemId, cb, eb) {
     }, eb);
 }
 
+function fetchContainers(cb, eb) {
+    var url = BESZEL_API_BASE + '/api/collections/containers/records?sort=-updated&perPage=50';
+    xhrGet(url, function(data) {
+        cb(data.items || []);
+    }, eb);
+}
+
+// ============================================
+// Metrics Parsing
+// ============================================
 function parseMetrics(stats) {
     if (!stats) return null;
     
     console.log('parseMetrics raw stats:', JSON.stringify(stats).substring(0, 500));
     
-    // Extrair temperatura da CPU se disponível
     var cpuTemp = 0;
     if (stats.t && Object.keys(stats.t).length > 0) {
         var temps = Object.keys(stats.t).map(function(k) { return stats.t[k]; });
         cpuTemp = Math.max.apply(Math, temps);
     }
     
-    // Extrair dados de GPU se disponíveis
     var gpuLoad = 0, gpuVram = 0, gpuVramTotal = 0, gpuTemp = 0, gpuName = '';
     if (stats.g && Object.keys(stats.g).length > 0) {
         var gpuKeys = Object.keys(stats.g);
@@ -188,15 +154,12 @@ function parseMetrics(stats) {
             var firstGpu = stats.g[gpuKeys[0]];
             gpuName = firstGpu.n || gpuKeys[0];
             console.log('GPU raw data:', firstGpu);
-            // Beszel GPU fields: u=utilization %, mu=mem_used MB, mt=mem_total MB, p=power W
             gpuLoad = firstGpu.u || 0;
-            gpuVram = (firstGpu.mu || 0) / 1024; // MB to GB
-            gpuVramTotal = (firstGpu.mt || 0) / 1024; // MB to GB
-            // Clamp VRAM total to known value (8GB for RX 580) if Beszel returns unrealistic value
+            gpuVram = (firstGpu.mu || 0) / 1024;
+            gpuVramTotal = (firstGpu.mt || 0) / 1024;
             if (gpuVramTotal > 10 || gpuVramTotal < 1) {
                 gpuVramTotal = 8;
             }
-            // GPU temp is in stats.t with the GPU name as key
             gpuTemp = (stats.t && stats.t[gpuName]) || 0;
         }
     }
@@ -216,45 +179,30 @@ function parseMetrics(stats) {
     });
     
     return {
-        // CPU
         cpu: stats.cpu || 0,
         cpuTemp: cpuTemp,
         cpuBreakdown: stats.cpub || [0,0,0,0,0],
-        
-        // Memory
         memTotal: stats.m || 0,
         memUsed: stats.mu || 0,
         memPct: stats.mp || 0,
         swapTotal: stats.s || 0,
         swapUsed: stats.su || 0,
-        
-        // Disk
         diskTotal: stats.d || 0,
         diskUsed: stats.du || 0,
         diskPct: stats.dp || 0,
         diskReadPs: stats.dr || 0,
         diskWritePs: stats.dw || 0,
         diskBusyPct: (stats.dios && stats.dios[2]) || 0,
-        
-        // Network
         netSent: stats.b ? stats.b[0] : 0,
         netRecv: stats.b ? stats.b[1] : 0,
         netInterfaces: stats.ni || {},
-        
-        // Load
         loadAvg: stats.la || [0,0,0],
-        
-        // GPU (Beszel fields: u=util %, mu=mem_used MB, mt=mem_total MB, p=power W)
         gpuLoad: gpuLoad,
         gpuVram: gpuVram,
         gpuVramTotal: gpuVramTotal,
         gpuTemp: gpuTemp,
         gpuName: gpuName,
-        
-        // Temperatures
         temperatures: stats.t || {},
-        
-        // Extra filesystems
         extraFs: stats.efs || {}
     };
 }
@@ -277,7 +225,6 @@ function updateHistories(metrics) {
     addToHistory(gpuLoadHistory, metrics.gpuLoad || 0);
     addToHistory(gpuVramHistory, metrics.gpuVram || 0);
     addToHistory(gpuTempHistory, metrics.gpuTemp || 0);
-    // Beszel returns diskReadPs/diskWritePs in MB/s already (dr, dw fields)
     addToHistory(nvmeReadHistory, metrics.diskReadPs || 0);
     addToHistory(nvmeWriteHistory, metrics.diskWritePs || 0);
     addToHistory(memUsageHistory, metrics.memPct || 0);
@@ -286,7 +233,7 @@ function updateHistories(metrics) {
 }
 
 // ============================================
-// Chart Rendering (Real Data)
+// Chart Rendering
 // ============================================
 function buildPathFromHistory(history, minY, maxY, height, offsetY) {
     if (history.length < 2) return 'M 0 ' + height + ' L 600 ' + height;
@@ -301,8 +248,6 @@ function buildPathFromHistory(history, minY, maxY, height, offsetY) {
         var y = height - ((history[i] - minY) / range) * height;
         if (i === 1) {
             path += ' Q ' + (x/2) + ' ' + y + ', ' + x + ' ' + y;
-        } else if (i === 2) {
-            path += ' T ' + x + ' ' + y;
         } else {
             path += ' T ' + x + ' ' + y;
         }
@@ -319,51 +264,42 @@ function animateCharts() {
     if (!isStreaming) return;
     tickCount++;
     
-    // CPU chart (0-100%)
     var cpuLine = buildPathFromHistory(cpuHistory, 0, 100, 120);
     var cpuArea = buildAreaPathFromHistory(cpuHistory, 0, 100, 120);
     setPath('pathCpuArea', cpuArea);
     setPath('pathCpuLine', cpuLine);
     
-    // CPU Temp chart (0-100°C)
     var cpuTempMax = 100;
     var cpuTempLine = buildPathFromHistory(cpuTempHistory, 0, cpuTempMax, 120);
     setPath('pathCpuTemp', cpuTempLine);
     
-    // GPU chart (0-100%)
     var gpuLine = buildPathFromHistory(gpuLoadHistory, 0, 100, 120);
     var gpuArea = buildAreaPathFromHistory(gpuLoadHistory, 0, 100, 120);
     setPath('pathGpuArea', gpuArea);
     setPath('pathGpuLine', gpuLine);
     
-    // GPU VRAM chart (0-vramTotal GB)
-    var vramMax = fallbackData.gpu.vramTotal; // 8GB for RX 580
+    var vramMax = fallbackData.gpu.vramTotal;
     var vramLine = buildPathFromHistory(gpuVramHistory, 0, vramMax, 120);
     setPath('pathGpuVram', vramLine);
     
-    // GPU Temp chart (0-100°C)
     var gpuTempLine = buildPathFromHistory(gpuTempHistory, 0, 100, 120);
     setPath('pathGpuTemp', gpuTempLine);
     
-    // NVMe Read chart (dynamic range)
     var readMax = Math.max.apply(Math, nvmeReadHistory.concat([1]));
     var readLine = buildPathFromHistory(nvmeReadHistory, 0, readMax, 120);
     var readArea = buildAreaPathFromHistory(nvmeReadHistory, 0, readMax, 120);
     setPath('pathNvmeReadArea', readArea);
     setPath('pathNvmeRead', readLine);
     
-    // NVMe Write chart (dynamic range)
     var writeMax = Math.max.apply(Math, nvmeWriteHistory.concat([1]));
     var writeLine = buildPathFromHistory(nvmeWriteHistory, 0, writeMax, 120);
     setPath('pathNvmeWrite', writeLine);
     
-    // Memory Usage chart (0-100%)
     var memLine = buildPathFromHistory(memUsageHistory, 0, 100, 120);
     var memArea = buildAreaPathFromHistory(memUsageHistory, 0, 100, 120);
     setPath('pathMemArea', memArea);
     setPath('pathMemLine', memLine);
     
-    // Disk Busy chart (0-100%)
     var busyLine = buildPathFromHistory(diskBusyHistory, 0, 100, 120);
     var busyArea = buildAreaPathFromHistory(diskBusyHistory, 0, 100, 120);
     setPath('pathDiskBusyArea', busyArea);
@@ -388,7 +324,6 @@ function updateCPU(metrics) {
     var cpuTempEl = document.getElementById('cpuTempVal');
     if (cpuTempEl) cpuTempEl.innerHTML = Math.round(temp) + '<span class="metric-unit">\u00B0C</span>';
     
-    // Update chart stats
     var cpuPeak = cpuHistory.length > 0 ? Math.max.apply(Math, cpuHistory) : 0;
     var cpuAvg = cpuHistory.length > 0 ? (cpuHistory.reduce(function(a,b){return a+b;},0) / cpuHistory.length) : 0;
     var statEls = document.querySelectorAll('#cpuRow .stat-value');
@@ -397,11 +332,8 @@ function updateCPU(metrics) {
 }
 
 function updateMemory(metrics) {
-    var usage = metrics ? metrics.memPct : fallbackData.mem.usage;
-    // Beszel returns memTotal (m) and memUsed (mu) in GB already
     var usedGB = metrics ? metrics.memUsed : fallbackData.mem.used;
     var totalGB = metrics ? metrics.memTotal : fallbackData.mem.total;
-    var availGB = metrics ? (metrics.memTotal - metrics.memUsed) : fallbackData.mem.avail;
     var swapUsed = metrics ? (metrics.swapUsed || 0) : fallbackData.mem.swapUsed;
     var swapTotal = metrics ? (metrics.swapTotal || 0) : fallbackData.mem.swapTotal;
     
@@ -414,11 +346,9 @@ function updateMemory(metrics) {
     var memUsedEl = document.getElementById('memUsedVal');
     if (memUsedEl) memUsedEl.innerHTML = formatNumber(usedGB) + ' GB';
     
-    // Update swap
     var swapEl = document.getElementById('memSwapVal');
     if (swapEl) swapEl.innerHTML = formatNumber(swapUsed) + ' GB / ' + formatNumber(swapTotal) + ' GB';
     
-    // Update chart stats (keep percentage on right chart)
     var memPeak = memUsageHistory.length > 0 ? Math.max.apply(Math, memUsageHistory) : 0;
     var memAvg = memUsageHistory.length > 0 ? (memUsageHistory.reduce(function(a,b){return a+b;},0) / memUsageHistory.length) : 0;
     var statEls = document.querySelectorAll('#memRow .stat-value');
@@ -429,7 +359,6 @@ function updateMemory(metrics) {
 function updateGPU(metrics) {
     var gpuLoad = metrics ? metrics.gpuLoad : fallbackData.gpu.load;
     var gpuVram = metrics ? metrics.gpuVram : fallbackData.gpu.vram;
-    // Use known VRAM total (8GB for RX 580) instead of Beszel's potentially incorrect value
     var gpuVramTotal = fallbackData.gpu.vramTotal;
     var gpuTemp = metrics ? metrics.gpuTemp : fallbackData.gpu.temp;
     
@@ -442,7 +371,6 @@ function updateGPU(metrics) {
     var gpuTempEl = document.getElementById('gpuTempVal');
     if (gpuTempEl) gpuTempEl.innerHTML = Math.round(gpuTemp) + '<span class="metric-unit">\u00B0C</span>';
     
-    // Update chart stats
     var gpuPeak = gpuLoadHistory.length > 0 ? Math.max.apply(Math, gpuLoadHistory) : 0;
     var gpuAvg = gpuLoadHistory.length > 0 ? (gpuLoadHistory.reduce(function(a,b){return a+b;},0) / gpuLoadHistory.length) : 0;
     var statEls = document.querySelectorAll('#gpuRow .stat-value');
@@ -454,18 +382,16 @@ function updateNVMe(metrics) {
     var readMB = metrics ? metrics.diskReadPs : fallbackData.nvme.read;
     var writeMB = metrics ? metrics.diskWritePs : fallbackData.nvme.write;
     var diskPct = metrics ? metrics.diskPct : fallbackData.nvme.iops;
-    // Beszel returns disk in GB (d=total GB, du=used GB)
     var diskUsed = metrics ? metrics.diskUsed : 0;
     var diskTotal = metrics ? metrics.diskTotal : 0;
     
-    // Update disk ring chart (only used portion, no free ring)
     var ringUsed = document.getElementById('diskRingUsed');
     var ringTextUsed = document.getElementById('diskRingTextUsed');
     var ringTextTotal = document.getElementById('diskRingTextTotal');
     var ringTextPct = document.getElementById('diskRingTextPct');
     
     if (ringUsed && metrics) {
-        var circumference = 2 * Math.PI * 58; // 364.42
+        var circumference = 2 * Math.PI * 58;
         var usedOffset = circumference * (1 - diskPct / 100);
         ringUsed.style.strokeDashoffset = usedOffset;
         if (ringTextUsed) ringTextUsed.textContent = formatNumber(diskUsed) + ' GB';
@@ -473,11 +399,9 @@ function updateNVMe(metrics) {
         if (ringTextPct) ringTextPct.textContent = diskPct.toFixed(1) + '%';
     }
     
-    // Update header status
     var diskUsageEl = document.querySelector('#storageRow .row-status');
     if (diskUsageEl && metrics) diskUsageEl.textContent = diskPct.toFixed(1) + '% USED';
     
-    // Update chart stats - Disk Busy %
     var busyPeak = diskBusyHistory.length > 0 ? Math.max.apply(Math, diskBusyHistory) : 0;
     var busyAvg = diskBusyHistory.length > 0 ? (diskBusyHistory.reduce(function(a,b){return a+b;},0) / diskBusyHistory.length) : 0;
     var statEls = document.querySelectorAll('#storageRow .stat-value');
@@ -487,52 +411,41 @@ function updateNVMe(metrics) {
 
 function updateSystemInfo(metrics) {
     if (!metrics) return;
-    
-    // Update load average
-    var loadEls = document.querySelectorAll('.detail-value');
-    // Could update load avg, network interfaces, etc.
 }
 
 function updateHardwareNames(metrics) {
     if (!metrics) return;
     
-    // GPU name from Beszel
     var gpuNameEl = document.getElementById('gpuName');
     if (gpuNameEl && metrics.gpuName) {
         gpuNameEl.textContent = metrics.gpuName;
     }
     
-    // GPU subtitle with VRAM total
     var gpuSubtitleEl = document.getElementById('gpuSubtitle');
     if (gpuSubtitleEl && metrics.gpuVramTotal) {
         gpuSubtitleEl.textContent = 'VRAM Total: ' + metrics.gpuVramTotal.toFixed(1) + ' GB';
     }
     
-    // CPU name - generic since Beszel doesn't provide model in stats
     var cpuNameEl = document.getElementById('cpuName');
     if (cpuNameEl) {
         cpuNameEl.textContent = 'Processador Desconhecido';
     }
     
-    // CPU subtitle
     var cpuCoreVal = document.getElementById('cpuCoresVal');
     if (cpuCoreVal) {
         cpuCoreVal.textContent = metrics.cpuBreakdown ? metrics.cpuBreakdown.length + 1 : '?';
     }
     
-    // Memory subtitle
     var memSubtitleEl = document.getElementById('memSubtitle');
     if (memSubtitleEl && metrics.memTotal) {
         memSubtitleEl.textContent = 'Total: ' + metrics.memTotal.toFixed(1) + ' GB';
     }
     
-    // Disk name
     var diskNameEl = document.getElementById('diskName');
     if (diskNameEl && metrics.diskTotal) {
         diskNameEl.textContent = metrics.diskTotal.toFixed(1) + ' GB';
     }
     
-    // Disk subtitle
     var diskSubtitleEl = document.getElementById('diskSubtitle');
     if (diskSubtitleEl && metrics.diskTotal && metrics.diskUsed) {
         diskSubtitleEl.textContent = metrics.diskUsed.toFixed(1) + ' GB / ' + metrics.diskTotal.toFixed(1) + ' GB';
@@ -540,35 +453,29 @@ function updateHardwareNames(metrics) {
 }
 
 function updateContainers() {
-    xhrGet(BESZEL_API_BASE + '/api/collections/containers/records?perPage=50', function(data) {
+    fetchContainers(function(containers) {
         var tbody = document.getElementById('dockerTableBody');
         if (!tbody) return;
         
         tbody.innerHTML = '';
         
-        if (!data || !data.items || data.items.length === 0) {
+        if (!containers || containers.length === 0) {
             tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#958ea0;padding:20px;">Nenhum container encontrado</td></tr>';
             return;
         }
         
-        for (var i = 0; i < data.items.length; i++) {
-            var c = data.items[i];
+        for (var i = 0; i < containers.length; i++) {
+            var c = containers[i];
             var row = document.createElement('tr');
             
-            // Health class
             var healthClass = 'health-unknown';
             var healthText = 'Desconhecido';
             if (c.health === 2) { healthClass = 'health-healthy'; healthText = 'Saudável'; }
             else if (c.health === 1) { healthClass = 'health-unhealthy'; healthText = 'Não saudável'; }
             else if (c.health === 0) { healthClass = 'health-unknown'; healthText = 'Sem check'; }
             
-            // Format memory (MB to GB)
             var memGB = (c.memory / 1024).toFixed(2);
-            
-            // Format network (bytes to KB/MB)
             var netStr = formatNet(c.net);
-            
-            // Format timestamp
             var updatedStr = formatTimestamp(c.updated);
             
             row.innerHTML = 
@@ -592,7 +499,6 @@ function updateContainers() {
     });
 }
 
-// Helper functions
 function formatNet(bytes) {
     if (!bytes || bytes === 0) return '0 B/s';
     if (bytes < 1024) return bytes + ' B/s';
@@ -643,10 +549,7 @@ function updateUI(metrics) {
         diskWritePs: metrics.diskWritePs
     });
     
-    // Atualizar históricos
     updateHistories(metrics);
-    
-    // Atualizar UI
     updateCPU(metrics);
     updateGPU(metrics);
     updateNVMe(metrics);
@@ -678,38 +581,21 @@ function toggleStream() {
 // Polling
 // ============================================
 function pollMetrics() {
-    if (!currentSystemId) {
-        fetchSystems(
-            function(system) {
-                currentSystemId = system.id;
-                console.log('System found:', system.name || system.host || system.id);
-                doPoll();
-            },
-            function(err) {
-                console.log('Using fallback data:', err);
-                updateUI(null);
-                updateContainers();
-            }
-        );
-        return;
-    }
-    doPoll();
-}
-
-function doPoll() {
-    fetchLatestStats(
-        currentSystemId,
-        function(stats, created) {
-            var metrics = parseMetrics(stats);
-            if (metrics) updateUI(metrics);
-            updateContainers();
-        },
-        function(err) {
-            console.log('Poll error, using fallback:', err);
-            updateUI(null);
-            updateContainers();
-        }
-    );
+    if (isPolling) return;
+    isPolling = true;
+    
+    fetchLatestStats(SYSTEM_ID, function(stats, created) {
+        isPolling = false;
+        var metrics = parseMetrics(stats);
+        if (metrics) updateUI(metrics);
+        else updateUI(null);
+        updateContainers();
+    }, function(err) {
+        isPolling = false;
+        console.log('Poll error, using fallback:', err);
+        updateUI(null);
+        updateContainers();
+    });
 }
 
 function startPolling(intervalMs) {
@@ -717,7 +603,6 @@ function startPolling(intervalMs) {
     pollMetrics();
     pollingInterval = setInterval(pollMetrics, intervalMs || POLL_INTERVAL_MS);
     
-    // Chart animation interval
     if (chartInterval) clearInterval(chartInterval);
     chartInterval = setInterval(function() {
         animateCharts();
@@ -729,11 +614,9 @@ function startPolling(intervalMs) {
 // Init
 // ============================================
 function init() {
-    // Stream toggle
     var toggleBtn = document.getElementById('streamToggle');
     if (toggleBtn) toggleBtn.addEventListener('click', toggleStream);
     
-    // Window buttons
     var winBtns = document.querySelectorAll('.win-btn');
     for (var i = 0; i < winBtns.length; i++) {
         winBtns[i].addEventListener('click', function() {
@@ -743,36 +626,21 @@ function init() {
         });
     }
     
-    // Initial renders
-    updateContainers();
     animateCharts();
-    
-    // Fetch config from local server, then start polling
-    fetchClientConfig(
-        function() {
-            console.log('Config loaded:', BESZEL_API_BASE);
-            startPolling(POLL_INTERVAL_MS);
-        },
-        function(err) {
-            console.log('Config fetch failed, using fallback:', err);
-            startPolling(POLL_INTERVAL_MS);
-        }
-    );
+    startPolling(POLL_INTERVAL_MS);
 }
 
-// DOM Ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
 } else {
     init();
 }
 
-// Global debug
 window.ServerMonitor = {
     start: startPolling,
     toggle: toggleStream,
     config: {
         setBaseUrl: function(u) { BESZEL_API_BASE = u; },
-        setToken: function(t) { BESZEL_API_TOKEN = t; }
+        setSystemId: function(id) { SYSTEM_ID = id; }
     }
 };
