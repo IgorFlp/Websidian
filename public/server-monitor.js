@@ -558,6 +558,91 @@ function toggleStream() {
 }
 
 // ============================================
+// Fullscreen
+// ============================================
+function isFullscreen() {
+    return document.fullscreenElement ||
+           document.webkitFullscreenElement ||
+           document.mozFullScreenElement ||
+           document.msFullscreenElement;
+}
+
+function requestFullscreen(element) {
+    if (element.requestFullscreen) {
+        return element.requestFullscreen();
+    } else if (element.webkitRequestFullscreen) {
+        return element.webkitRequestFullscreen();
+    } else if (element.mozRequestFullScreen) {
+        return element.mozRequestFullScreen();
+    } else if (element.msRequestFullscreen) {
+        return element.msRequestFullscreen();
+    }
+    return Promise.reject(new Error('Fullscreen not supported'));
+}
+
+function exitFullscreen() {
+    if (document.exitFullscreen) {
+        return document.exitFullscreen();
+    } else if (document.webkitExitFullscreen) {
+        return document.webkitExitFullscreen();
+    } else if (document.mozCancelFullScreen) {
+        return document.mozCancelFullScreen();
+    } else if (document.msExitFullscreen) {
+        return document.msExitFullscreen();
+    }
+    return Promise.reject(new Error('Fullscreen not supported'));
+}
+
+function updateFullscreenButton() {
+    var btn = document.getElementById('fullscreenBtn');
+    var enterIcon = btn ? btn.querySelector('.fullscreen-icon') : null;
+    var exitIcon = btn ? btn.querySelector('.fullscreen-exit-icon') : null;
+    if (!btn) return;
+    
+    if (isFullscreen()) {
+        if (enterIcon) enterIcon.style.display = 'none';
+        if (exitIcon) exitIcon.style.display = 'inline';
+        btn.setAttribute('title', 'Sair tela cheia');
+        btn.setAttribute('aria-label', 'Sair tela cheia');
+    } else {
+        if (enterIcon) enterIcon.style.display = 'inline';
+        if (exitIcon) exitIcon.style.display = 'none';
+        btn.setAttribute('title', 'Tela cheia');
+        btn.setAttribute('aria-label', 'Entrar tela cheia');
+    }
+}
+
+function toggleFullscreen() {
+    if (isFullscreen()) {
+        exitFullscreen().then(function() {
+            updateFullscreenButton();
+        }).catch(function(err) {
+            console.error('Exit fullscreen failed:', err);
+        });
+    } else {
+        requestFullscreen(document.documentElement).then(function() {
+            updateFullscreenButton();
+        }).catch(function(err) {
+            console.error('Request fullscreen failed:', err);
+            // Some browsers require user gesture, show hint
+            if (err.name === 'TypeError' || err.message.includes('user gesture')) {
+                alert('Toque no botão novamente para ativar tela cheia');
+            }
+        });
+    }
+}
+
+function handleFullscreenChange() {
+    updateFullscreenButton();
+}
+
+// Listen for fullscreen changes (vendor prefixes)
+document.addEventListener('fullscreenchange', handleFullscreenChange);
+document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+// ============================================
 // Polling
 // ============================================
 function pollMetrics() {
@@ -597,6 +682,9 @@ function init() {
     var toggleBtn = document.getElementById('streamToggle');
     if (toggleBtn) toggleBtn.addEventListener('click', toggleStream);
     
+    var fsBtn = document.getElementById('fullscreenBtn');
+    if (fsBtn) fsBtn.addEventListener('click', toggleFullscreen);
+    
     var winBtns = document.querySelectorAll('.win-btn');
     for (var i = 0; i < winBtns.length; i++) {
         winBtns[i].addEventListener('click', function() {
@@ -606,6 +694,7 @@ function init() {
         });
     }
     
+    updateFullscreenButton();
     animateCharts();
     startPolling(POLL_INTERVAL_MS);
 }
