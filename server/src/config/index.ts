@@ -34,6 +34,8 @@ export interface Config {
   mcpApiKey: string;
   beszelApiKey: string;
   beszelApiUrl: string;
+  beszelEmail: string;
+  beszelPassword: string;
 }
 
 function getEnv(key: string, defaultValue?: string): string {
@@ -93,6 +95,8 @@ export const config: Config = {
   mcpApiKey: getEnv("MCP_API_KEY", ""),
   beszelApiKey: getEnv("BESZEL_API_KEY", ""),
   beszelApiUrl: getEnv("BESZEL_API_URL", "http://10.0.0.219:8090").replace(/\/$/, ""),
+  beszelEmail: getEnv("BESZEL_EMAIL"),
+  beszelPassword: getEnv("BESZEL_PASSWORD"),
 };
 
 export type { Config as ConfigType };
