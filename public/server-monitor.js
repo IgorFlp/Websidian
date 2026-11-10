@@ -460,7 +460,7 @@ function updateContainers() {
         tbody.innerHTML = '';
         
         if (!containers || containers.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#958ea0;padding:20px;">Nenhum container encontrado</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#958ea0;padding:20px;">Nenhum container encontrado</td></tr>';
             return;
         }
         
@@ -476,19 +476,15 @@ function updateContainers() {
             
             var memGB = (c.memory / 1024).toFixed(2);
             var netStr = formatNet(c.net);
-            var updatedStr = formatTimestamp(c.updated);
             
             row.innerHTML = 
                 '<td class="name">' + escapeHtml(c.name) + '</td>' +
-                '<td>' + escapeHtml(c.system || '-') + '</td>' +
                 '<td class="cpu">' + formatNumber(c.cpu || 0) + '%</td>' +
                 '<td class="memory">' + memGB + ' GB</td>' +
                 '<td class="net">' + netStr + '</td>' +
                 '<td class="health ' + healthClass + '">' + healthText + '</td>' +
                 '<td class="ports">' + escapeHtml(c.ports || '-') + '</td>' +
-                '<td class="image" title="' + escapeHtml(c.image) + '">' + escapeHtml(c.image) + '</td>' +
-                '<td class="status">' + escapeHtml(c.status || '-') + '</td>' +
-                '<td class="updated">' + updatedStr + '</td>';
+                '<td class="status">' + escapeHtml(c.status || '-') + '</td>';
             
             tbody.appendChild(row);
         }
@@ -504,22 +500,6 @@ function formatNet(bytes) {
     if (bytes < 1024) return bytes + ' B/s';
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB/s';
     return (bytes / (1024 * 1024)).toFixed(2) + ' MB/s';
-}
-
-function formatTimestamp(ts) {
-    if (!ts) return '-';
-    var date = new Date(ts);
-    if (isNaN(date.getTime())) return '-';
-    var now = new Date();
-    var diffMs = now - date;
-    var diffSec = Math.floor(diffMs / 1000);
-    var diffMin = Math.floor(diffSec / 60);
-    var diffHour = Math.floor(diffMin / 60);
-    
-    if (diffSec < 60) return 'agora';
-    if (diffMin < 60) return 'h\u00E1 ' + diffMin + 'min';
-    if (diffHour < 24) return 'h\u00E1 ' + diffHour + 'h';
-    return date.toLocaleDateString('pt-BR') + ' ' + date.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
 }
 
 function escapeHtml(text) {
