@@ -63,17 +63,13 @@ body {
 }
 .header-container {
   display: flex;
+  align-items: center;
+  justify-content: flex-start;
   background-color: #2a003f;
   padding: 10px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
-.header-container label {
-  color: #e6d9ff;
-  text-decoration: none;
 
-  font-size: 18px;
-  margin-left: 5px;
-}
 .header-item {
   position: relative;
   display: flex;
@@ -82,7 +78,19 @@ body {
   padding: 10px;
   border-radius: 8px;
   text-decoration: none;
+  color: #fff;
+  flex-shrink: 0;
 }
+
+/* Fullscreen button in horizontal header - push to right */
+.header-horizontal .fullscreen-btn {
+  margin-left: auto;
+  margin-right: 0;
+  padding: 10px 12px;
+  background-color: transparent;
+  border: none;
+}
+
 .header-item ::after {
   content:'';
   position: absolute;
@@ -90,6 +98,7 @@ body {
   bottom: -20px;
   left: -20px;
   right: -20px;
+  
  
 }
 
@@ -111,6 +120,9 @@ body {
   height: 26px;
   fill: #ffffff;
   display: inline-block;
+}
+#sidebar-placeholder {
+  display: none;
 }
 .sidebar-toggle {
   position: relative;
@@ -312,5 +324,58 @@ body {
   }
   .index-container h1 {
     font-size: 32px;
+  }
+}
+
+/* ============================================
+   HEADER RESPONSIVE
+   ============================================ */
+
+@media (max-width: 768px) {
+  .header-horizontal {
+    display: none;
+  }
+  .header-vertical {
+    display: flex !important;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    background-color: #2a003f;
+    padding: 8px 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    gap: 8px;
+  }
+  .header-vertical .header-item {
+    margin-right: 0;
+    margin-bottom: 0;
+    padding: 8px;
+    width: auto;
+    max-width: none;
+    justify-content: center;
+  }
+  .header-vertical .header-item label {
+    display: none !important;
+  }
+  .header-vertical .header-item svg {
+    width: 28px;
+    height: 28px;
+  }
+  .header-vertical .fullscreen-btn {
+    width: auto;
+    max-width: none;
+    justify-content: center;
+    padding: 8px;
+    background-color: transparent;
+    border: none;
+  }
+  .header-vertical .sidebar-toggle {
+    background-color: transparent;
+    border: none;
+  }
+}
+
+@media (min-width: 769px) {
+  .header-vertical {
+    display: none !important;
   }
 }
