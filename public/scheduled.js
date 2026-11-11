@@ -365,11 +365,22 @@ function toggleTask(task) {
 }
 
 window.onload = function () {
+  var headerLoaded = false;
+  var sidebarLoaded = false;
+
+  function tryInitFullscreen() {
+    if (headerLoaded && sidebarLoaded && window.initFullscreenButtons) {
+      window.initFullscreenButtons();
+    }
+  }
+
   loadTasks();
   setInterval(loadTasks, 30000);
 
   httpGet("header.html", function (data) {
     document.querySelector(".header-placeholder").innerHTML = data;
+    headerLoaded = true;
+    tryInitFullscreen();
   });
   httpGet("sidebar.html", function (data) {
     document.querySelector("#sidebar-placeholder").innerHTML = data;
@@ -377,6 +388,8 @@ window.onload = function () {
       if (window.initSidebar) {
         window.initSidebar();
       }
+      sidebarLoaded = true;
+      tryInitFullscreen();
     });
   });
 };

@@ -103,6 +103,19 @@ function xhrGet(url, callback, errorCallback) {
     xhr.send();
 }
 
+// httpGet for loading HTML (like header.html)
+function httpGet(url, callback) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState !== 4) return;
+        if (xhr.status === 200) {
+            callback(xhr.responseText);
+        }
+    };
+    xhr.send();
+}
+
 // ============================================
 // API Beszel (via proxy /api/beszel)
 // ============================================
@@ -594,22 +607,28 @@ function exitFullscreen() {
 }
 
 function updateFullscreenButton() {
-    var btn = document.getElementById('fullscreenBtn');
-    var enterIcon = btn ? btn.querySelector('.fullscreen-icon') : null;
-    var exitIcon = btn ? btn.querySelector('.fullscreen-exit-icon') : null;
-    if (!btn) return;
+    var buttons = [
+        document.getElementById('fullscreenBtn'),
+        document.getElementById('fullscreenBtnVertical')
+    ];
     
-    if (isFullscreen()) {
-        if (enterIcon) enterIcon.style.display = 'none';
-        if (exitIcon) exitIcon.style.display = 'inline';
-        btn.setAttribute('title', 'Sair tela cheia');
-        btn.setAttribute('aria-label', 'Sair tela cheia');
-    } else {
-        if (enterIcon) enterIcon.style.display = 'inline';
-        if (exitIcon) exitIcon.style.display = 'none';
-        btn.setAttribute('title', 'Tela cheia');
-        btn.setAttribute('aria-label', 'Entrar tela cheia');
-    }
+    buttons.forEach(function(btn) {
+        if (!btn) return;
+        var enterIcon = btn.querySelector('.fullscreen-icon');
+        var exitIcon = btn.querySelector('.fullscreen-exit-icon');
+        
+        if (isFullscreen()) {
+            if (enterIcon) enterIcon.style.display = 'none';
+            if (exitIcon) exitIcon.style.display = 'inline';
+            btn.setAttribute('title', 'Sair tela cheia');
+            btn.setAttribute('aria-label', 'Sair tela cheia');
+        } else {
+            if (enterIcon) enterIcon.style.display = 'inline';
+            if (exitIcon) exitIcon.style.display = 'none';
+            btn.setAttribute('title', 'Tela cheia');
+            btn.setAttribute('aria-label', 'Entrar tela cheia');
+        }
+    });
 }
 
 function toggleFullscreen() {
@@ -679,11 +698,39 @@ function startPolling(intervalMs) {
 // Init
 // ============================================
 function init() {
+    // Load header (same as other pages)
+    var headerPlaceholder = document.querySelector('.header-placeholder');
+    if (headerPlaceholder) {
+        httpGet('header.html', function(html) {
+            headerPlaceholder.innerHTML = html;
+            
+            // Add fullscreen button listeners after header is loaded
+            var fsBtn1 = document.getElementById('fullscreenBtn');
+            var fsBtn2 = document.getElementById('fullscreenBtnVertical');
+            if (fsBtn1) fsBtn1.addEventListener('click', toggleFullscreen);
+            if (fsBtn2) fsBtn2.addEventListener('click', toggleFullscreen);
+            updateFullscreenButton();
+        });
+    }
+    httpGet("sidebar.html", function (data) {
+        document.querySelector("#sidebar-placeholder").innerHTML = data;
+        loadScript("sidebar.js", function () {
+        if (window.initSidebar) {
+            window.initSidebar();
+        }
+        sidebarLoaded = true;
+        tryInitFullscreen();
+        });        
+    });
+    function loadScript(src, callback) {
+        var script = document.createElement("script");
+        script.src = src;
+        script.onload = callback;
+        document.head.appendChild(script);
+    }
+    
     var toggleBtn = document.getElementById('streamToggle');
     if (toggleBtn) toggleBtn.addEventListener('click', toggleStream);
-    
-    var fsBtn = document.getElementById('fullscreenBtn');
-    if (fsBtn) fsBtn.addEventListener('click', toggleFullscreen);
     
     var winBtns = document.querySelectorAll('.win-btn');
     for (var i = 0; i < winBtns.length; i++) {
@@ -694,7 +741,6 @@ function init() {
         });
     }
     
-    updateFullscreenButton();
     animateCharts();
     startPolling(POLL_INTERVAL_MS);
 }

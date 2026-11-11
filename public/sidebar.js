@@ -68,7 +68,8 @@
   var sidebarBackdrop = null;
   var sidebarResizer = null;
   var selectVault = null;
-
+  var sidebarPlaceholder = null;
+  
   var selectedFiles = [];
   var expandedFolders = new Set();
   var longPressTimer = null;
@@ -171,6 +172,7 @@
     sidebarBackdrop = document.getElementById('sidebar-backdrop');
     sidebarResizer = document.getElementById('sidebar-resizer');
     selectVault = document.getElementById('select-vault');
+    sidebarPlaceholder = document.getElementById('sidebar-placeholder');
 
 
     if (selectVault) {
@@ -262,12 +264,14 @@
 
   function openSidebar() {
     sidebar.classList.add('open');
+    sidebarPlaceholder.style.display = 'block';
     sidebarBackdrop.classList.add('visible');
     document.body.classList.add('sidebar-open');
   }
 
   function closeSidebar() {
     sidebar.classList.remove('open');
+    sidebarPlaceholder.style.display = 'none';
     sidebarBackdrop.classList.remove('visible');
     document.body.classList.remove('sidebar-open');
   }

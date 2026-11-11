@@ -32,6 +32,15 @@ function httpGet(url, callback) {
 }
 
 window.onload = function () {
+  var headerLoaded = false;
+  var sidebarLoaded = false;
+
+  function tryInitFullscreen() {
+    if (headerLoaded && sidebarLoaded && window.initFullscreenButtons) {
+      window.initFullscreenButtons();
+    }
+  }
+
   var style = document.createElement('link');
   style.rel = 'stylesheet';
   style.href = 'sidebar.css';
@@ -39,6 +48,8 @@ window.onload = function () {
 
   httpGet("header.html", function (data) {
     document.querySelector(".header-placeholder").innerHTML = data;
+    headerLoaded = true;
+    tryInitFullscreen();
   });
 
   httpGet("sidebar.html", function (data) {
@@ -47,6 +58,8 @@ window.onload = function () {
       if (window.initSidebar) {
         window.initSidebar();
       }
+      sidebarLoaded = true;
+      tryInitFullscreen();
     });
   });
 };

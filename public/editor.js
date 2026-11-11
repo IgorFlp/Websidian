@@ -56,8 +56,19 @@ function GetFileContent(filePath, vaultIndex, callback) {
 window.onload = function () {
   var filePath = getQueryParam("path");
   var vaultIndex = localStorage.getItem("selectedVault") || 0;
+  var headerLoaded = false;
+  var sidebarLoaded = false;
+
+  function tryInitFullscreen() {
+    if (headerLoaded && sidebarLoaded && window.initFullscreenButtons) {
+      window.initFullscreenButtons();
+    }
+  }
+
+  var filePath = getQueryParam("path");
+  var vaultIndex = localStorage.getItem("selectedVault") || 0;
   if (filePath) {
-    GetFileContent(filePath,vaultIndex);
+    GetFileContent(filePath, vaultIndex);
   }
 
   var sidebarPlaceholder = document.getElementById("sidebar-placeholder");
@@ -73,12 +84,16 @@ window.onload = function () {
         if (window.initSidebar) {
           window.initSidebar();
         }
+        sidebarLoaded = true;
+        tryInitFullscreen();
       });
     });
   }
 
   httpGet("header.html", function (data) {
     document.querySelector(".header-placeholder").innerHTML = data;
+    headerLoaded = true;
+    tryInitFullscreen();
   });
 };
 

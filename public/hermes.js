@@ -879,6 +879,13 @@ function httpGet(url, callback) {
   xhr.send();
 }
 
+function loadScript(src, callback) {
+  var script = document.createElement("script");
+  script.src = src;
+  script.onload = callback;
+  document.head.appendChild(script);
+}
+
 function loadSessions() {
   httpGet("/sessions/html", function (html) {
     var sessionsList = document.getElementById("sessionsList");
@@ -1610,11 +1617,10 @@ function initChat() {
   var inputField = document.getElementById("inputField");
   var btnSend = document.getElementById("btnSend");
   var streamContent = document.getElementById("streamContent");
-  var sidebar = document.getElementById("sidebar");
-  var btnSidebarToggle = document.getElementById("btnSidebarToggle");
+  var sidebar = document.getElementById("hermes-bar");
+  var btnSidebarToggle = document.getElementsByClassName("hermes-bar-toggle-btn")[0];
 
   if (!inputField || !btnSend || !streamContent) return;
-
   // Sidebar toggle
   if (btnSidebarToggle && sidebar) {
     btnSidebarToggle.addEventListener("click", function () {
@@ -1734,10 +1740,36 @@ function confirmDeleteSession() {
 }
 
 window.addEventListener("load", function () {
-  if (window.initSidebar) initSidebar();
-  loadSessions();
-  initChat();
+  var headerLoaded = false;
+  var sidebarLoaded = false;
 
+  function tryInitFullscreen() {
+    if (headerLoaded && sidebarLoaded && window.initFullscreenButtons) {
+      window.initFullscreenButtons();
+    }
+  }
+
+  httpGet("header.html", function (data) {
+    document.querySelector(".header-placeholder").innerHTML = data;
+    headerLoaded = true;
+    tryInitFullscreen();
+  });
+  httpGet("sidebar.html", function (data) {
+        document.querySelector("#sidebar-placeholder").innerHTML = data;
+        loadScript("sidebar.js", function () {
+        if (window.initSidebar) {
+            window.initSidebar();
+        }
+        sidebarLoaded = true;
+        tryInitFullscreen();
+        });        
+    });
+    function loadScript(src, callback) {
+        var script = document.createElement("script");
+        script.src = src;
+        script.onload = callback;
+        document.head.appendChild(script);
+    }
   // Modal handlers (task 4.3, 4.7)
   var confirmBtn = document.getElementById("deleteConfirmBtn");
   var cancelBtn = document.getElementById("deleteCancelBtn");
@@ -1750,4 +1782,5 @@ window.addEventListener("load", function () {
       if (e.key === "Enter") { e.preventDefault(); confirmDeleteSession(); }
     }
   });
+  initChat();
 });

@@ -849,11 +849,22 @@ function loadScript(src, callback) {
 }
 
 function initPage() {
+  var headerLoaded = false;
+  var sidebarLoaded = false;
+
+  function tryInitFullscreen() {
+    if (headerLoaded && sidebarLoaded && window.initFullscreenButtons) {
+      window.initFullscreenButtons();
+    }
+  }
+
   loadPresets();
   loadTasks();
 
   httpGet("header.html", function (data) {
     document.querySelector(".header-placeholder").innerHTML = data;
+    headerLoaded = true;
+    tryInitFullscreen();
   });
 
   httpGet("sidebar.html", function (data) {
@@ -862,6 +873,8 @@ function initPage() {
       if (window.initSidebar) {
         window.initSidebar();
       }
+      sidebarLoaded = true;
+      tryInitFullscreen();
     });
   });
 
