@@ -364,45 +364,6 @@ body {
     font-size: 24px;
 }
 
-/* Floating fullscreen button */
-.fullscreen-btn-float {
-    position: fixed;
-    top: 16px;
-    right: 16px;
-    z-index: 100;
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    background-color: #a078ff;
-    color: #16111d;
-    border: none;
-    display: -webkit-flex;
-    display: flex;
-    -webkit-align-items: center;
-    align-items: center;
-    -webkit-justify-content: center;
-    justify-content: center;
-    cursor: pointer;
-    box-shadow: 0 4px 12px rgba(160, 120, 255, 0.4);
-    -webkit-transition: background-color 150ms, transform 150ms, box-shadow 150ms;
-    transition: background-color 150ms, transform 150ms, box-shadow 150ms;
-}
-.fullscreen-btn-float:hover {
-    background-color: #d0bcff;
-    transform: scale(1.05);
-    box-shadow: 0 6px 16px rgba(160, 120, 255, 0.5);
-}
-.fullscreen-btn-float:active {
-    transform: scale(0.95);
-}
-.fullscreen-btn-float:focus {
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(160, 120, 255, 0.5);
-}
-.fullscreen-btn-float .material-symbols-outlined {
-    font-size: 24px;
-}
-
 /* ============================================
    CONTROL DOCK
    ============================================ */
