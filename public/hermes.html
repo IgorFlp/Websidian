@@ -19,11 +19,12 @@
 
 <body class="bg-surface text-on-surface font-body-md select-none" style="height: 87vh">
   <div class="header-placeholder"></div>
+  <div id="sidebar-placeholder"></div>
   <div class="app-container">
 
-    <!-- Sidebar -->
-    <aside class="sidebar" id="sidebar">
-      <div class="sidebar-header p-4 border-b border-outline-variant-30">
+    <!-- Hermes bar -->
+    <aside class="hermes-bar" id="hermes-bar">
+      <div class="hermes-bar-header p-4 border-b border-outline-variant-30">
         <div class="flex items-center justify-between mb-3">
           <span class="font-label-sm uppercase tracking-wider text-[10px] text-outline/80">Ambiente Operacional</span>
           <span class="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(208,188,255,0.8)]"></span>
@@ -92,8 +93,8 @@
       <header class="terminal-header flex-shrink-0">
         <div class="flex items-center gap-3">
           <button
-            class="sidebar-toggle-btn p-1.5 rounded hover:bg-surface-container-high hover:text-primary transition-all"
-            id="btnSidebarToggle" type="button" title="Mostrar/Ocultar Sessões" aria-label="Toggle Sessions">
+            class="hermes-bar-toggle-btn p-1.5 rounded hover:bg-surface-container-high hover:text-primary transition-all"
+            id="btn-hermes-barToggle" type="button" title="Mostrar/Ocultar Sessões" aria-label="Toggle Sessions">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="#d0bcff" stroke="#d0bcff" stroke-width="2"
               stroke-linecap="round" stroke-linejoin="round">
               <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -135,9 +136,9 @@
     padding-top: 10px;
     " class="flex-1 bg-transparent border-none text-on-surface placeholder:text-outline/60 font-code-md text-code-md focus:ring-0 focus:outline-none px-2 py-1 text-sm sm:text-base"
             id="inputField" type="text" placeholder="Digite um comando..." autocomplete="off" spellcheck="false" />
-<div class="relative">
-             <button class="mic-btn" id="btnMic" type="button" title="Gravar Áudio" aria-label="Microfone"
-               style="display:flex;align-items:center;justify-content:center;gap:6px;width:auto;padding:14px;border-radius:24px;background:rgba(208,188,255,0.15);border:1px solid rgba(208,188,255,0.4);color:#d0bcff;font-size:13px;font-family:inherit;cursor:pointer;transition:all 0.2s;min-width:60px;height:60px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;">
+          <div class="relative">
+            <button class="mic-btn" id="btnMic" type="button" title="Gravar Áudio" aria-label="Microfone"
+              style="display:flex;align-items:center;justify-content:center;gap:6px;width:auto;padding:14px;border-radius:24px;background:rgba(208,188,255,0.15);border:1px solid rgba(208,188,255,0.4);color:#d0bcff;font-size:13px;font-family:inherit;cursor:pointer;transition:all 0.2s;min-width:60px;height:60px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;">
               <svg id="micIcon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                 stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
                 style="display:block;flex-shrink:0;pointer-events:none;-webkit-user-select:none;user-select:none;">
