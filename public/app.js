@@ -33,6 +33,15 @@ function httpGet(url, callback) {
 
 window.onload = function () {
   var sidebarPlaceholder = document.getElementById("sidebar-placeholder");
+  var headerLoaded = false;
+  var sidebarLoaded = false;
+
+  function tryInitFullscreen() {
+    if (headerLoaded && sidebarLoaded && window.initFullscreenButtons) {
+      window.initFullscreenButtons();
+    }
+  }
+
   if (sidebarPlaceholder) {
     var style = document.createElement("link");
     style.rel = "stylesheet";
@@ -45,12 +54,16 @@ window.onload = function () {
         if (window.initSidebar) {
           window.initSidebar();
         }
+        sidebarLoaded = true;
+        tryInitFullscreen();
       });
     });
   }
 
   httpGet("header.html", function (data) {
     document.querySelector(".header-placeholder").innerHTML = data;
+    headerLoaded = true;
+    tryInitFullscreen();
   });
 };
 
